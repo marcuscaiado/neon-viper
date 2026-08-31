@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <title>Neon Viper 🐍✨</title>
+  <script src="arcade-leaderboard.js"></script>
   <style>
     * { margin:0; padding:0; box-sizing:border-box; touch-action:none; user-select:none; }
     body { background:#0a0c16; color:#fff; font-family:'Segoe UI',sans-serif; overflow:hidden; display:flex; justify-content:center; align-items:center; height:100vh; }
@@ -146,6 +147,11 @@
         playChime(150, 0.4);
         document.getElementById('final-score').textContent = score;
         document.getElementById('modal').style.display = 'flex';
+        try {
+          if (window.ArcadeLeaderboard) {
+            window.ArcadeLeaderboard.submitScore('neon-viper', score);
+          }
+        } catch(e){}
         return;
       }
 
@@ -156,6 +162,11 @@
           playChime(150, 0.4);
           document.getElementById('final-score').textContent = score;
           document.getElementById('modal').style.display = 'flex';
+          try {
+            if (window.ArcadeLeaderboard) {
+              window.ArcadeLeaderboard.submitScore('neon-viper', score);
+            }
+          } catch(e){}
           return;
         }
       }
