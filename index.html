@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Neon Viper 🐍✨</title>
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; touch-action:none; user-select:none; }
+    body { background:#0a0c16; color:#fff; font-family:'Segoe UI',sans-serif; overflow:hidden; display:flex; justify-content:center; align-items:center; height:100vh; }
+    #canvas-container { position:relative; width:100vw; height:100vh; max-width:800px; max-height:600px; aspect-ratio:4/3; }
+    canvas { width:100%; height:100%; display:block; background:#0a0c16; }
+    .arcade-nav { position:absolute; top:16px; right:16px; z-index:100; background:rgba(0,0,0,0.7); border:2px solid #05ffa1; color:#05ffa1; padding:8px 16px; border-radius:8px; font-weight:bold; text-decoration:none; font-size:13px; box-shadow:0 0 15px rgba(5,255,161,0.4); }
+    .hud { position:absolute; top:16px; left:16px; font-family:monospace; font-size:20px; font-weight:bold; color:#05ffa1; text-shadow:0 0 10px #05ffa1; pointer-events:none; }
+    #modal { position:absolute; inset:0; background:rgba(0,0,0,0.85); display:none; flex-direction:column; align-items:center; justify-content:center; gap:16px; z-index:200; }
+    #modal h1 { color:#05ffa1; font-size:42px; text-shadow:0 0 20px #05ffa1; }
+    .btn { background:linear-gradient(135deg,#05ffa1,#00f5ff); border:none; color:#000; padding:12px 32px; font-size:18px; font-weight:bold; border-radius:8px; cursor:pointer; text-decoration:none; box-shadow:0 0 20px rgba(5,255,161,0.5); }
+    .boost-hint { position:absolute; bottom:20px; left:50%; transform:translateX(-50%); font-size:14px; color:#aaa; pointer-events:none; }
+  </style>
+</head>
+<body>
+  <div id="canvas-container">
+    <a href="https://marcuscaiado.github.io/marcus-arcade/" class="arcade-nav">🕹️ Arcade Hub</a>
+    <div class="hud">LENGTH: <span id="len-val">15</span> | ORBS: <span id="score-val">0</span></div>
+    <div class="boost-hint">Hold Touch / Left-Click for NITRO BOOST ⚡</div>
+    <canvas id="gameCanvas" width="800" height="600"></canvas>
+    <div id="modal">
+      <h1>VIPER CRASHED! 💥</h1>
+      <p style="font-size:20px;">FINAL SCORE: <span id="final-score">0</span></p>
+      <button class="btn" onclick="restartGame()">RESPAWN VIPER 🔄</button>
+      <a href="https://marcuscaiado.github.io/marcus-arcade/" class="btn" style="background:#222; color:#fff; border:1px solid #05ffa1;">ARCADE HUB 🕹️</a>
+    </div>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+
+    // Audio
+    let audioCtx = null;
+    function getAudio() { if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); return audioCtx; }
+    function playChime(freq, dur) {
+      try {
+        const c = getAudio(); const osc = c.createOscillator(); const g = c.createGain();
+        osc.frequency.value = freq; g.gain.setValueAtTime(0.1, c.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.01, c.currentTime + dur);
+        osc.connect(g); g.connect(c.destination); osc.start(); osc.stop(c.currentTime + dur);
+      } catch(e){}
+    }
+
+    let isGameOver = false, score = 0;
+    let targetAngle = 0, currentAngle = 0;
+    let isBoosting = false;
+
+    // Snake Body Segments
+    let snake = [];
+    const initialLen = 18;
+    for (let i = 0; i < initialLen; i++) {
+      snake.push({ x: 400 - i * 6, y: 300 });
+    }
+
+    // Food Orbs
+    let foods = [];
+    for (let i = 0; i < 35; i++) spawnFood();
+
+    function spawnFood() {
+      foods.push({
+        x: 30 + Math.random() * 740,
+        y: 30 + Math.random() * 540,
+        r: 4 + Math.random() * 4,
+        color: ['#00f5ff', '#ff007f', '#ffff00', '#05ffa1', '#b967ff'][Math.floor(Math.random() * 5)]
+      });
+    }
+
+    // Controls
+    const setSteerPos = (cx, cy) => {
+      const rect = canvas.getBoundingClientRect();
+      const mx = ((cx - rect.left) / rect.width) * 800;
+      const my = ((cy - rect.top) / rect.height) * 600;
+      const head = snake[0];
+      targetAngle = Math.atan2(my - head.y, mx - head.x);
+    };
+
+    window.addEventListener('mousemove', e => setSteerPos(e.clientX, e.clientY));
+    window.addEventListener('mousedown', () => isBoosting = true);
+    window.addEventListener('mouseup', () => isBoosting = false);
+
+    window.addEventListener('touchmove', e => { e.preventDefault(); setSteerPos(e.touches[0].clientX, e.touches[0].clientY); }, { passive:false });
+    window.addEventListener('touchstart', e => { e.preventDefault(); isBoosting = true; setSteerPos(e.touches[0].clientX, e.touches[0].clientY); }, { passive:false });
+    window.addEventListener('touchend', e => { isBoosting = false; });
+
+    function restartGame() {
+      snake = [];
+      for (let i = 0; i < initialLen; i++) snake.push({ x: 400 - i * 6, y: 300 });
+      score = 0; isGameOver = false; targetAngle = 0; currentAngle = 0;
+      document.getElementById('modal').style.display = 'none';
+      requestAnimationFrame(loop);
+    }
+
+    function loop() {
+      if (isGameOver) return;
+
+      // Smooth Rotation Lerp
+      let diff = targetAngle - currentAngle;
+      while (diff < -Math.PI) diff += Math.PI * 2;
+      while (diff > Math.PI) diff -= Math.PI * 2;
+      currentAngle += diff * 0.12;
+
+      // Speed
+      const speed = isBoosting && snake.length > 8 ? 6.5 : 3.5;
+      if (isBoosting && snake.length > 8 && Math.random() < 0.05) {
+        snake.pop(); // Burn tail for boost
+      }
+
+      // Move Head
+      const head = snake[0];
+      const newHead = {
+        x: head.x + Math.cos(currentAngle) * speed,
+        y: head.y + Math.sin(currentAngle) * speed
+      };
+
+      // Wall collision
+      if (newHead.x < 12 || newHead.x > 788 || newHead.y < 12 || newHead.y > 588) {
+        isGameOver = true;
+        playChime(150, 0.4);
+        document.getElementById('final-score').textContent = score;
+        document.getElementById('modal').style.display = 'flex';
+        return;
+      }
+
+      // Self collision (after first 15 segments)
+      for (let i = 16; i < snake.length; i++) {
+        if (Math.hypot(newHead.x - snake[i].x, newHead.y - snake[i].y) < 10) {
+          isGameOver = true;
+          playChime(150, 0.4);
+          document.getElementById('final-score').textContent = score;
+          document.getElementById('modal').style.display = 'flex';
+          return;
+        }
+      }
+
+      snake.unshift(newHead);
+
+      // Check Food Eaten
+      let ate = false;
+      for (let i = foods.length - 1; i >= 0; i--) {
+        const f = foods[i];
+        if (Math.hypot(newHead.x - f.x, newHead.y - f.y) < f.r + 10) {
+          foods.splice(i, 1);
+          score += 10;
+          playChime(500 + Math.random() * 400, 0.08);
+          spawnFood();
+          ate = true;
+          break;
+        }
+      }
+
+      if (!ate) snake.pop();
+
+      // Render
+      ctx.fillStyle = '#0a0c16'; ctx.fillRect(0, 0, 800, 600);
+
+      // Neon Grid Lines
+      ctx.strokeStyle = 'rgba(5,255,161,0.06)'; ctx.lineWidth = 1;
+      for (let x = 0; x < 800; x += 40) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, 600); ctx.stroke(); }
+      for (let y = 0; y < 600; y += 40) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(800, y); ctx.stroke(); }
+
+      // Outer Arena Border
+      ctx.strokeStyle = '#05ffa1'; ctx.lineWidth = 4;
+      ctx.shadowColor = '#05ffa1'; ctx.shadowBlur = 15;
+      ctx.strokeRect(10, 10, 780, 580);
+      ctx.shadowBlur = 0;
+
+      // Draw Foods
+      for (const f of foods) {
+        ctx.fillStyle = f.color;
+        ctx.shadowColor = f.color; ctx.shadowBlur = 10;
+        ctx.beginPath(); ctx.arc(f.x, f.y, f.r, 0, Math.PI * 2); ctx.fill();
+        ctx.shadowBlur = 0;
+      }
+
+      // Draw Snake Body
+      for (let i = snake.length - 1; i >= 0; i--) {
+        const seg = snake[i];
+        const p = 1 - i / snake.length;
+        const rad = 6 + p * 6;
+
+        ctx.fillStyle = i === 0 ? '#ffffff' : (i % 2 === 0 ? '#05ffa1' : '#00f5ff');
+        ctx.shadowColor = '#05ffa1'; ctx.shadowBlur = i === 0 ? 20 : 8;
+        ctx.beginPath(); ctx.arc(seg.x, seg.y, rad, 0, Math.PI * 2); ctx.fill();
+        ctx.shadowBlur = 0;
+      }
+
+      // HUD
+      document.getElementById('len-val').textContent = snake.length;
+      document.getElementById('score-val').textContent = score;
+
+      requestAnimationFrame(loop);
+    }
+    requestAnimationFrame(loop);
+  </script>
+</body>
+</html>
