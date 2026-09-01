@@ -141,23 +141,15 @@
         y: head.y + Math.sin(currentAngle) * speed
       };
 
-      // Wall collision
-      if (newHead.x < 12 || newHead.x > 788 || newHead.y < 12 || newHead.y > 588) {
-        isGameOver = true;
-        playChime(150, 0.4);
-        document.getElementById('final-score').textContent = score;
-        document.getElementById('modal').style.display = 'flex';
-        try {
-          if (window.ArcadeLeaderboard) {
-            window.ArcadeLeaderboard.submitScore('neon-viper', score);
-          }
-        } catch(e){}
-        return;
-      }
+      // Wall soft boundary deflection
+      if (newHead.x < 14) { newHead.x = 14; currentAngle = Math.PI - currentAngle; }
+      if (newHead.x > 786) { newHead.x = 786; currentAngle = Math.PI - currentAngle; }
+      if (newHead.y < 14) { newHead.y = 14; currentAngle = -currentAngle; }
+      if (newHead.y > 586) { newHead.y = 586; currentAngle = -currentAngle; }
 
-      // Self collision (after first 15 segments)
-      for (let i = 16; i < snake.length; i++) {
-        if (Math.hypot(newHead.x - snake[i].x, newHead.y - snake[i].y) < 10) {
+      // Fair Self collision (only checks segments after index 24 with generous 7px margin)
+      for (let i = 24; i < snake.length; i++) {
+        if (Math.hypot(newHead.x - snake[i].x, newHead.y - snake[i].y) < 7) {
           isGameOver = true;
           playChime(150, 0.4);
           document.getElementById('final-score').textContent = score;
@@ -173,13 +165,13 @@
 
       snake.unshift(newHead);
 
-      // Check Food Eaten
+      // Check Food Eaten (with 16px generous magnet radius)
       let ate = false;
       for (let i = foods.length - 1; i >= 0; i--) {
         const f = foods[i];
-        if (Math.hypot(newHead.x - f.x, newHead.y - f.y) < f.r + 10) {
+        if (Math.hypot(newHead.x - f.x, newHead.y - f.y) < f.r + 16) {
           foods.splice(i, 1);
-          score += 10;
+          score += (f.isSuper ? 50 : 10);
           playChime(500 + Math.random() * 400, 0.08);
           spawnFood();
           ate = true;
@@ -206,8 +198,8 @@
       // Draw Foods
       for (const f of foods) {
         ctx.fillStyle = f.color;
-        ctx.shadowColor = f.color; ctx.shadowBlur = 10;
-        ctx.beginPath(); ctx.arc(f.x, f.y, f.r, 0, Math.PI * 2); ctx.fill();
+        ctx.shadowColor = f.color; ctx.shadowBlur = f.isSuper ? 18 : 10;
+        ctx.beginPath(); ctx.arc(f.x, f.y, f.r + (f.isSuper ? Math.sin(Date.now() * 0.01) * 2 : 0), 0, Math.PI * 2); ctx.fill();
         ctx.shadowBlur = 0;
       }
 
