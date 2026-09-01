@@ -1,10 +1,10 @@
-# 🐍 Neon Viper 3D ✨ — Cyber Slither Arena
+# 🐍 Cute Snake.io 🍉✨ — Cartoon Fruit Arena
 
 [![Live Demo](https://img.shields.io/badge/🎮_Play_Live_Demo-marcuscaiado.github.io-success?style=for-the-badge&logo=githubpages&logoColor=white)](https://marcuscaiado.github.io/neon-viper/)
-[![Three.js](https://img.shields.io/badge/WebGL_3D-Three.js_r128-00f5ff?style=flat&logo=three.js&logoColor=white)](https://threejs.org/)
-[![Arcade Hub](https://img.shields.io/badge/🕹️_Arcade_Hub-Connected-05ffa1?style=flat)](https://marcuscaiado.github.io/marcus-arcade/)
+[![Three.js](https://img.shields.io/badge/WebGL_3D-Three.js_r128-00e676?style=flat&logo=three.js&logoColor=white)](https://threejs.org/)
+[![Arcade Hub](https://img.shields.io/badge/🕹️_Arcade_Hub-Connected-00e5ff?style=flat)](https://marcuscaiado.github.io/marcus-arcade/)
 
-A premier, high-octane 3D **Snake.io** cyberpunk arena game featuring 3D perspective camera tracking, 8 customizable snake designs/skins, smart multi-snake AI bots, nitro boost speed mechanics, and live global arcade leaderboard sync.
+A charming, vibrant, cartoon 3D **Snake.io** fruit battle arena where you slither around eating juicy floating fruits (Watermelons 🍉, Strawberries 🍓, Apples 🍎, Oranges 🍊, Bananas 🍌, Grapes 🍇). Cut off rival cartoon snakes to explode them into a massive feast of delicious fruits!
 
 ---
 
@@ -13,27 +13,16 @@ A premier, high-octane 3D **Snake.io** cyberpunk arena game featuring 3D perspec
 
 ---
 
-## ✨ Features & Highlights
+## 🍉 Game Features & Highlights
 
-- **3D Perspective Slither Arena**: Powered by Three.js WebGL with dynamic camera follow that smoothly zooms out as you grow into a massive serpent.
-- **Fixed Steering Physics**: Complete elimination of the mouse 360-spin death glitch with deadzone protection and smooth angular turning limits.
-- **8 Custom 3D Snake Skins**:
-  1. 🐍 **Neon Viper**: Signature cyan/emerald cyber serpent with glowing dorsal spine.
-  2. 🐲 **Mecha Dragon**: Titanium plating with gold/orange energy thrusters.
-  3. 🌌 **Cosmic Void**: Deep nebula violet with star-sparkle aura.
-  4. 🌈 **Hyper Rainbow**: Real-time chromatic shifting rainbow spectrum.
-  5. 🌋 **Molten Magma**: Volcanic obsidian with glowing lava veins.
-  6. 🌸 **Sakura Glaze**: Pearlescent pastel pink and soft anime dragon eyes.
-  7. 👑 **Golden King**: 24K mirror gold chrome with a floating royal crown.
-  8. 💻 **Matrix Cyber**: Deep cybernetic green with digital circuitry patterns.
-- **Snake.io Battle Royale Mechanics**:
-  - Compete against 10+ smart AI rival snakes roaming the arena.
-  - Safe self-traversal (slither over your own body to coil and trap opponents).
-  - High-mass explosion bursts when any snake crashes into a rival or wall.
-  - Real-time Top 10 Arena Leaderboard with the floating #1 Golden Crown.
-  - Minimap radar tracking player position and rival bot coordinates.
-- **Nitro Boost**: Hold Left-Click, Spacebar, or mobile boost button to sprint and cut off opponents!
-- **Arcade Hub Synchronization**: Real cloud leaderboard tracking with classic 3-letter initials via `arcade-leaderboard.js`.
+- **3D Cartoon Fruit Orchard**: Distinct, recognizable 3D fruits with floating bobs and gentle spins (Watermelons, Strawberries, Apples, Oranges, Bananas, Grapes, and Super Stars).
+- **Snake Death = Giant Fruit Feast**: When any snake crashes, its entire body erupts into an explosion of juicy fruits that bounce across the floor for anyone to gobble up!
+- **Cute Cartoon Snake Heads**: Expressive big googly eyes with pupils, pink blushing cheeks, cute crowns, and an animated flicking tongue.
+- **8 Cute Cartoon Skins**: Kawaii Emerald, Cute Mecha, Sakura Bunny, Aqua Dino, Berry Serpent, Sunny Bumble, Golden King, and Rainbow Candy.
+- **Fair & Strict Collision**: "If you touch you die!" Full-resolution continuous collision checks along every body segment and head-on-head clashes.
+- **Comfortable Slither Kinematics**: Balanced, controllable slithering pace ($0.76\text{ units/frame}$) and punchy nitro boost sprint.
+- **Authentic Snake.io Vector Controls**: Screen-relative virtual steering with center deadzone protection.
+- **Arcade Hub Leaderboard**: Live global cloud score persistence with classic 3-letter initials.
 
 ---
 
@@ -41,6 +30,6 @@ A premier, high-octane 3D **Snake.io** cyberpunk arena game featuring 3D perspec
 
 | Action | Desktop Controls | Mobile / Touch |
 | :--- | :--- | :--- |
-| **Steer Viper** | Move Mouse Cursor | Drag / Touch anywhere on screen |
-| **Nitro Boost** | Hold Left Click or `[SPACE]` | Hold **NITRO BOOST** Button |
+| **Steer Snake** | Move Mouse away from center | Drag / Touch anywhere on screen |
+| **Nitro Boost Sprint** | Hold Left Click or `[SPACE]` | Hold **NITRO BOOST** Button |
 | **Change Skin** | Click `🎨 Skins` in top bar | Tap `🎨 Skins` in top bar |
