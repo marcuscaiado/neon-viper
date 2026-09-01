@@ -13,7 +13,7 @@
       --accent: #ff007f;
       --gold: #ffd700;
       --dark-bg: #070913;
-      --panel-bg: rgba(10, 14, 28, 0.82);
+      --panel-bg: rgba(10, 14, 28, 0.85);
     }
     * { margin:0; padding:0; box-sizing:border-box; touch-action:none; user-select:none; }
     body {
@@ -23,6 +23,7 @@
       overflow: hidden;
       width: 100vw;
       height: 100vh;
+      cursor: crosshair;
     }
     #game-container {
       position: relative;
@@ -36,7 +37,7 @@
       display: block;
     }
 
-    /* Modern Top Bar HUD */
+    /* Top HUD Header */
     .hud-header {
       position: absolute;
       top: 14px;
@@ -51,7 +52,7 @@
     .hud-stats-card {
       background: var(--panel-bg);
       backdrop-filter: blur(12px);
-      border: 1px solid rgba(5, 255, 161, 0.3);
+      border: 1px solid rgba(5, 255, 161, 0.35);
       border-radius: 12px;
       padding: 10px 18px;
       box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 0 0 15px rgba(5, 255, 161, 0.15);
@@ -152,7 +153,7 @@
     .lb-item.player {
       color: var(--primary);
       font-weight: bold;
-      background: rgba(5, 255, 161, 0.12);
+      background: rgba(5, 255, 161, 0.15);
       border-radius: 4px;
       padding: 3px 6px;
       margin: 2px -6px;
@@ -272,7 +273,7 @@
     .modal-backdrop {
       position: absolute;
       inset: 0;
-      background: radial-gradient(circle at center, rgba(10, 14, 28, 0.85) 0%, rgba(5, 7, 15, 0.96) 100%);
+      background: radial-gradient(circle at center, rgba(10, 14, 28, 0.88) 0%, rgba(5, 7, 15, 0.97) 100%);
       backdrop-filter: blur(16px);
       display: flex;
       flex-direction: column;
@@ -282,7 +283,7 @@
       padding: 20px;
     }
     .modal-card {
-      background: rgba(15, 22, 42, 0.92);
+      background: rgba(15, 22, 42, 0.94);
       border: 1px solid rgba(5, 255, 161, 0.35);
       border-radius: 20px;
       padding: 30px;
@@ -310,7 +311,7 @@
       margin-top: -10px;
     }
 
-    /* Skin Selector Carousels */
+    /* Skin Selector */
     .skin-picker-container {
       width: 100%;
       background: rgba(10, 15, 29, 0.6);
@@ -478,7 +479,7 @@
 
     <!-- Nitro Indicator / Hints -->
     <div class="boost-indicator" id="boost-hint">
-      ⚡ Hold <b style="color:#fff;">LEFT-CLICK</b> or <b style="color:#fff;">SPACE</b> for NITRO BOOST
+      ⚡ Move mouse away from center to steer &bull; Hold <b style="color:#fff;">CLICK</b> or <b style="color:#fff;">SPACE</b> for NITRO
     </div>
 
     <!-- Mobile Boost Button -->
@@ -563,7 +564,7 @@
     let playerName = localStorage.getItem('neon_viper_name') || (window.ArcadeLeaderboard ? window.ArcadeLeaderboard.getPlayerTag() : 'VIPER');
 
     /* ==========================================================================
-       2. AUDIO SYNTHESIS ENGINE (Zero external dependencies)
+       2. AUDIO SYNTHESIS ENGINE
        ========================================================================== */
     let audioCtx = null;
     function getAudio() {
@@ -618,7 +619,7 @@
     /* ==========================================================================
        3. THREE.JS 3D SCENE & ENGINE SETUP
        ========================================================================== */
-    const ARENA_RADIUS = 280; // Large 3D arena
+    const ARENA_RADIUS = 300;
     const canvas = document.getElementById('webgl-canvas');
     const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false, powerPreference: 'high-performance' });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -628,17 +629,17 @@
 
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x060814);
-    scene.fog = new THREE.FogExp2(0x060814, 0.0028);
+    scene.fog = new THREE.FogExp2(0x060814, 0.0025);
 
     const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 1, 1200);
     camera.position.set(0, 110, 85);
     camera.lookAt(0, 0, 0);
 
     // Lighting
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.65);
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
     scene.add(ambientLight);
 
-    const dirLight = new THREE.DirectionalLight(0xa5f3fc, 0.85);
+    const dirLight = new THREE.DirectionalLight(0xa5f3fc, 0.9);
     dirLight.position.set(100, 200, 80);
     scene.add(dirLight);
 
@@ -650,7 +651,7 @@
     function createArenaFloor() {
       const floorGeo = new THREE.CircleGeometry(ARENA_RADIUS, 64);
       const floorMat = new THREE.MeshStandardMaterial({
-        color: 0x0a0f24,
+        color: 0x090e23,
         roughness: 0.35,
         metalness: 0.8
       });
@@ -659,15 +660,15 @@
       floor.position.y = -0.1;
       scene.add(floor);
 
-      // Grid Shader / Lines
-      const gridHelper = new THREE.PolarGridHelper(ARENA_RADIUS, 18, 64, 64, 0x05ffa1, 0x112347);
+      // Grid Lines
+      const gridHelper = new THREE.PolarGridHelper(ARENA_RADIUS, 20, 64, 64, 0x05ffa1, 0x112347);
       gridHelper.position.y = 0.05;
-      gridHelper.material.opacity = 0.45;
+      gridHelper.material.opacity = 0.4;
       gridHelper.material.transparent = true;
       scene.add(gridHelper);
 
-      // Outer Neon Boundary Ring
-      const ringGeo = new THREE.RingGeometry(ARENA_RADIUS - 1.5, ARENA_RADIUS + 2.5, 96);
+      // Boundary Ring
+      const ringGeo = new THREE.RingGeometry(ARENA_RADIUS - 2, ARENA_RADIUS + 3, 96);
       const ringMat = new THREE.MeshBasicMaterial({ color: 0x05ffa1, side: THREE.DoubleSide });
       const boundaryRing = new THREE.Mesh(ringGeo, ringMat);
       boundaryRing.rotation.x = -Math.PI / 2;
@@ -675,27 +676,27 @@
       scene.add(boundaryRing);
 
       // 3D Neon Barrier Wall Cylinder
-      const wallGeo = new THREE.CylinderGeometry(ARENA_RADIUS, ARENA_RADIUS, 18, 96, 1, true);
+      const wallGeo = new THREE.CylinderGeometry(ARENA_RADIUS, ARENA_RADIUS, 22, 96, 1, true);
       const wallMat = new THREE.MeshBasicMaterial({
         color: 0x00f5ff,
         transparent: true,
-        opacity: 0.22,
-        side: THREE.DoubleSide,
-        wireframe: false
+        opacity: 0.25,
+        side: THREE.DoubleSide
       });
       const wall = new THREE.Mesh(wallGeo, wallMat);
-      wall.position.y = 9;
+      wall.position.y = 11;
       scene.add(wall);
     }
     createArenaFloor();
 
     /* ==========================================================================
-       4. SHARED 3D MESH GEOMETRIES & MATERIALS POOL (Optimized Rendering)
+       4. SHARED 3D MESH GEOMETRIES & MATERIALS POOL
        ========================================================================== */
     const sphereGeo = new THREE.SphereGeometry(1, 16, 16);
     const eyeGeo = new THREE.SphereGeometry(0.35, 12, 12);
     const pupilGeo = new THREE.SphereGeometry(0.18, 12, 12);
     const crownGeo = new THREE.ConeGeometry(0.8, 1.2, 5);
+    const shieldRingGeo = new THREE.TorusGeometry(2.5, 0.15, 8, 32);
 
     const materialsCache = new Map();
     function getSkinMaterial(colorHex, emissiveHex, isShiny = true) {
@@ -704,7 +705,7 @@
         const mat = new THREE.MeshStandardMaterial({
           color: new THREE.Color(colorHex),
           emissive: new THREE.Color(emissiveHex || 0x000000),
-          emissiveIntensity: 0.35,
+          emissiveIntensity: 0.4,
           roughness: isShiny ? 0.2 : 0.6,
           metalness: isShiny ? 0.5 : 0.1
         });
@@ -716,9 +717,10 @@
     const whiteMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
     const blackMat = new THREE.MeshBasicMaterial({ color: 0x050505 });
     const goldMat = new THREE.MeshStandardMaterial({ color: 0xffd700, metalness: 0.9, roughness: 0.1, emissive: 0x554400 });
+    const shieldMat = new THREE.MeshBasicMaterial({ color: 0x00f5ff, transparent: true, opacity: 0.75, wireframe: true });
 
     /* ==========================================================================
-       5. 3D SNAKE CLASS WITH SMOOTH STEERING (BUG-FREE DEADZONE ALGORITHM)
+       5. 3D SNAKE CLASS WITH SNAKE.IO STYLE RELATIVE STEERING & SAFETY
        ========================================================================== */
     class Snake3D {
       constructor(name, skin, isPlayer = false, startX = 0, startZ = 0) {
@@ -728,7 +730,7 @@
         this.isAlive = true;
         this.kills = 0;
 
-        // Position & Steering
+        // Position & Angle
         this.x = startX;
         this.z = startZ;
         this.angle = Math.random() * Math.PI * 2;
@@ -736,32 +738,34 @@
         this.speed = 1.35;
         this.isBoosting = false;
 
+        // Spawn Invulnerability Shield (3.5s protection)
+        this.invulnerableTimer = isPlayer ? 3.5 : 1.5;
+
         // Snake Body Data
         this.initialLength = 20;
         this.mass = 160;
-        this.segmentSpacing = 1.55;
         this.baseRadius = 1.6;
 
-        // Path history for ultra-smooth slither kinematics
+        // Path history
         this.history = [];
-        for (let i = 0; i < 300; i++) {
+        for (let i = 0; i < 400; i++) {
           this.history.push({
             x: startX - Math.cos(this.angle) * (i * 0.4),
             z: startZ - Math.sin(this.angle) * (i * 0.4)
           });
         }
 
-        // 3D Scene Objects Container
+        // 3D Scene Container
         this.group = new THREE.Group();
         scene.add(this.group);
 
-        // Build 3D Head Mesh with Glowing Expressive Eyes
+        // Head Mesh
         this.headMesh = new THREE.Group();
         const headSphere = new THREE.Mesh(sphereGeo, getSkinMaterial(skin.headColor, skin.glow, true));
         headSphere.scale.set(this.baseRadius * 1.25, this.baseRadius * 1.1, this.baseRadius * 1.35);
         this.headMesh.add(headSphere);
 
-        // Left & Right Eyes
+        // Eyes
         this.leftEye = new THREE.Mesh(eyeGeo, whiteMat);
         this.leftEye.position.set(-0.8, 0.6, 0.9);
         this.leftPupil = new THREE.Mesh(pupilGeo, blackMat);
@@ -776,18 +780,25 @@
         this.rightEye.add(this.rightPupil);
         this.headMesh.add(this.rightEye);
 
-        // Crown for #1 or Gold skin
+        // Crown
         this.crown = new THREE.Mesh(crownGeo, goldMat);
         this.crown.position.set(0, 2.5, 0);
         this.crown.rotation.x = Math.PI;
         this.crown.visible = !!skin.hasCrown;
         this.headMesh.add(this.crown);
 
+        // Spawn Shield Mesh
+        this.shieldMesh = new THREE.Mesh(shieldRingGeo, shieldMat);
+        this.shieldMesh.rotation.x = Math.PI / 2;
+        this.shieldMesh.position.y = 0.5;
+        this.shieldMesh.visible = this.invulnerableTimer > 0;
+        this.headMesh.add(this.shieldMesh);
+
         this.group.add(this.headMesh);
 
         // Body Meshes Pool
         this.bodyMeshes = [];
-        this.maxMeshes = 180;
+        this.maxMeshes = 200;
         for (let i = 0; i < this.maxMeshes; i++) {
           const isEven = i % 2 === 0;
           const colorHex = isEven ? skin.color : skin.secondary;
@@ -798,10 +809,9 @@
           this.bodyMeshes.push(mesh);
         }
 
-        // AI specific states
+        // AI specific
         this.aiDecisionTimer = Math.random() * 60;
         this.aiTargetFood = null;
-        this.aiEvasionVector = null;
       }
 
       setCrown(show) {
@@ -821,68 +831,68 @@
       update(deltaTime, foods, otherSnakes) {
         if (!this.isAlive) return;
 
-        // AI Steering and Decisions
+        // Update Invulnerability Shield
+        if (this.invulnerableTimer > 0) {
+          this.invulnerableTimer -= deltaTime;
+          this.shieldMesh.visible = true;
+          this.shieldMesh.rotation.z += 0.05;
+        } else {
+          this.shieldMesh.visible = false;
+        }
+
+        // AI Steering
         if (!this.isPlayer) {
           this.updateAI(foods, otherSnakes);
         }
 
         // =========================================================================
-        // CHRONIC 360-SPIN BUG FIX & ANGULAR SMOOTHING
+        // SNAKE.IO STYLE SMOOTH ANGULAR TURN RATE LIMIT
         // =========================================================================
         let diff = this.targetAngle - this.angle;
         while (diff < -Math.PI) diff += Math.PI * 2;
         while (diff > Math.PI) diff -= Math.PI * 2;
 
-        // Smoothly clamp maximum angular turn rate so snake cannot whip into zero-radius circles
-        const maxTurnRate = this.isBoosting ? 0.14 : 0.11;
+        // Controlled turn rate: snake turns in smooth arcs, never instantly 180s
+        const maxTurnRate = this.isBoosting ? 0.10 : 0.08;
         const turnStep = Math.sign(diff) * Math.min(Math.abs(diff), maxTurnRate);
         this.angle += turnStep;
 
-        // Speed & Nitro Boost
+        // Speed & Nitro
         const currentSpeed = (this.isBoosting && this.mass > 40) ? this.speed * 1.85 : this.speed;
         if (this.isBoosting && this.mass > 40 && Math.random() < 0.2) {
-          this.mass -= 0.6;
-          // Spawn boost trail food orb behind tail
-          if (this.history.length > 20 && Math.random() < 0.4) {
+          this.mass -= 0.5;
+          if (this.history.length > 20 && Math.random() < 0.35) {
             const tailPt = this.history[Math.min(this.history.length - 1, 30)];
             spawnFoodOrb(tailPt.x + (Math.random()-0.5)*2, tailPt.z + (Math.random()-0.5)*2, 0.9, this.skin.color, false);
           }
         }
 
-        // Move Head
+        // Move Forward
         this.x += Math.cos(this.angle) * currentSpeed;
         this.z += Math.sin(this.angle) * currentSpeed;
 
-        // Boundary Soft Bounce Deflection
+        // Soft Arena Boundary Bounce
         const distFromCenter = Math.hypot(this.x, this.z);
-        if (distFromCenter > ARENA_RADIUS - 5) {
-          // Push back toward center
+        if (distFromCenter > ARENA_RADIUS - 6) {
           const angleToCenter = Math.atan2(-this.z, -this.x);
           this.targetAngle = angleToCenter;
-          const bounceAmt = (distFromCenter - (ARENA_RADIUS - 5));
+          const bounceAmt = (distFromCenter - (ARENA_RADIUS - 6));
           this.x -= (this.x / distFromCenter) * bounceAmt;
           this.z -= (this.z / distFromCenter) * bounceAmt;
-
-          // Wall impact lethal if hit very hard at high speed
-          if (distFromCenter > ARENA_RADIUS + 2) {
-            this.die('hit the outer energy barrier');
-            return;
-          }
         }
 
-        // Record Position in History
+        // Record Position
         this.history.unshift({ x: this.x, z: this.z });
-        if (this.history.length > 600) this.history.pop();
+        if (this.history.length > 700) this.history.pop();
 
-        // Update 3D Head Mesh
+        // Update Head 3D Mesh
         this.headMesh.position.set(this.x, this.baseRadius * 0.85, this.z);
-        // Rotate head toward movement direction
         this.headMesh.rotation.y = -this.angle - Math.PI / 2;
         if (this.crown.visible) {
           this.crown.rotation.y += 0.03;
         }
 
-        // Calculate Visible Segments based on Mass
+        // Update Body Segments
         const activeSegments = Math.min(this.maxMeshes, Math.floor(12 + (this.mass * 0.18)));
         const historyStep = 3;
 
@@ -893,13 +903,11 @@
             const pt = this.history[histIdx];
             if (pt) {
               mesh.visible = true;
-              // Gentle scale taper from head to tail
               const taper = 1.0 - (i / activeSegments) * 0.45;
               const segRadius = Math.max(0.6, this.baseRadius * taper);
               mesh.scale.set(segRadius, segRadius * 0.95, segRadius);
               mesh.position.set(pt.x, segRadius * 0.85, pt.z);
 
-              // Rainbow skin dynamic color cycle
               if (this.skin.isRainbow) {
                 const hue = (Date.now() * 0.002 + i * 0.08) % 1;
                 mesh.material.color.setHSL(hue, 1.0, 0.55);
@@ -914,8 +922,8 @@
       updateAI(foods, otherSnakes) {
         this.aiDecisionTimer--;
 
-        // 1. Check Collision Danger Ahead (Obstacle Avoidance)
-        const lookAheadDist = this.isBoosting ? 28 : 18;
+        // Look Ahead for Obstacles
+        const lookAheadDist = this.isBoosting ? 26 : 16;
         const forwardX = this.x + Math.cos(this.angle) * lookAheadDist;
         const forwardZ = this.z + Math.sin(this.angle) * lookAheadDist;
 
@@ -926,37 +934,35 @@
           return;
         }
 
-        // Snake Body Avoidance
+        // Snake Body Avoidance (Only avoid other snakes' bodies)
         for (const other of otherSnakes) {
           if (!other.isAlive || other === this) continue;
 
-          // Check if forward path intersects other snake's body
           const activeSegments = Math.min(other.bodyMeshes.length, Math.floor(12 + (other.mass * 0.18)));
           for (let i = 0; i < activeSegments; i += 3) {
             const histIdx = Math.min(other.history.length - 1, (i + 1) * 3);
             const seg = other.history[histIdx];
             if (seg && Math.hypot(forwardX - seg.x, forwardZ - seg.z) < 14) {
-              // Steer perpendicular to escape
               this.targetAngle = this.angle + (Math.random() > 0.5 ? 1.6 : -1.6);
               this.isBoosting = false;
               return;
             }
           }
 
-          // Aggressive Cut-off Tactic: If rival head is nearby and we are longer, try to dash in front!
-          if (this.mass > other.mass * 1.1 && Math.hypot(this.x - other.x, this.z - other.z) < 45) {
-            const interceptX = other.x + Math.cos(other.angle) * 15;
-            const interceptZ = other.z + Math.sin(other.angle) * 15;
+          // Aggressive Cut-off: If nearby snake is smaller, dash ahead
+          if (this.mass > other.mass * 1.2 && Math.hypot(this.x - other.x, this.z - other.z) < 40) {
+            const interceptX = other.x + Math.cos(other.angle) * 14;
+            const interceptZ = other.z + Math.sin(other.angle) * 14;
             this.targetAngle = Math.atan2(interceptZ - this.z, interceptX - this.x);
-            this.isBoosting = Math.random() < 0.65;
+            this.isBoosting = Math.random() < 0.6;
             return;
           }
         }
 
-        // 2. Hunt Closest / Richest Food Cluster
+        // Hunt Food
         if (this.aiDecisionTimer <= 0 || !this.aiTargetFood) {
           this.aiDecisionTimer = 40 + Math.random() * 40;
-          this.isBoosting = Math.random() < 0.12;
+          this.isBoosting = Math.random() < 0.1;
 
           let bestDist = Infinity;
           let bestFood = null;
@@ -964,7 +970,6 @@
           for (let i = 0; i < foods.length; i += 2) {
             const f = foods[i];
             const d = Math.hypot(f.x - this.x, f.z - this.z);
-            // Weight super orbs more heavily
             const weight = f.isSuper ? d * 0.5 : d;
             if (weight < bestDist) {
               bestDist = weight;
@@ -976,18 +981,18 @@
             this.aiTargetFood = bestFood;
             this.targetAngle = Math.atan2(bestFood.z - this.z, bestFood.x - this.x);
           } else {
-            this.targetAngle += (Math.random() - 0.5) * 1.2;
+            this.targetAngle += (Math.random() - 0.5) * 1.0;
           }
         }
       }
 
       die(reason = 'crashed into another viper') {
-        if (!this.isAlive) return;
+        if (!this.isAlive || this.invulnerableTimer > 0) return;
         this.isAlive = false;
 
         playSound('crash', 120);
 
-        // Explode entire body into bright glowing energy mass orbs
+        // Explode into energy orbs
         const activeSegments = Math.min(this.bodyMeshes.length, Math.floor(12 + (this.mass * 0.18)));
         for (let i = 0; i < activeSegments; i++) {
           const histIdx = Math.min(this.history.length - 1, (i + 1) * 3);
@@ -999,12 +1004,11 @@
               pt.z + (Math.random() - 0.5) * 4,
               1.6 + Math.random() * 1.2,
               orbColor,
-              true // Super orb worth high mass
+              true
             );
           }
         }
 
-        // Hide meshes
         this.headMesh.visible = false;
         for (const m of this.bodyMeshes) m.visible = false;
 
@@ -1019,7 +1023,7 @@
     }
 
     /* ==========================================================================
-       6. 3D FOOD ORBS & PARTICLE SYSTEM
+       6. 3D FOOD ORBS
        ========================================================================== */
     const foods = [];
     const foodGroup = new THREE.Group();
@@ -1059,17 +1063,10 @@
       });
     }
 
-    // Populate Initial Arena Foods
     for (let i = 0; i < 280; i++) {
       const angle = Math.random() * Math.PI * 2;
-      const dist = Math.sqrt(Math.random()) * (ARENA_RADIUS - 15);
-      spawnFoodOrb(
-        Math.cos(angle) * dist,
-        Math.sin(angle) * dist,
-        0.8 + Math.random() * 0.6,
-        null,
-        Math.random() < 0.12
-      );
+      const dist = Math.sqrt(Math.random()) * (ARENA_RADIUS - 20);
+      spawnFoodOrb(Math.cos(angle) * dist, Math.sin(angle) * dist, 0.8 + Math.random() * 0.6, null, Math.random() < 0.12);
     }
 
     /* ==========================================================================
@@ -1089,76 +1086,78 @@
     function spawnAIBot() {
       const botName = BOT_NAMES[Math.floor(Math.random() * BOT_NAMES.length)];
       const skin = SKINS[Math.floor(Math.random() * SKINS.length)];
-      const angle = Math.random() * Math.PI * 2;
-      const dist = 50 + Math.random() * (ARENA_RADIUS - 90);
-      const bot = new Snake3D(botName, skin, false, Math.cos(angle) * dist, Math.sin(angle) * dist);
+      
+      // Spawn far away from player so no spawn kill occurs!
+      let spawnX = 0, spawnZ = 0;
+      for (let attempt = 0; attempt < 10; attempt++) {
+        const angle = Math.random() * Math.PI * 2;
+        const dist = 60 + Math.random() * (ARENA_RADIUS - 100);
+        spawnX = Math.cos(angle) * dist;
+        spawnZ = Math.sin(angle) * dist;
+        if (!player || Math.hypot(spawnX - player.x, spawnZ - player.z) > 75) break;
+      }
+
+      const bot = new Snake3D(botName, skin, false, spawnX, spawnZ);
       bot.mass = 80 + Math.random() * 260;
       aiBots.push(bot);
     }
 
     function initArena() {
-      // Clear old bots
       for (const bot of aiBots) bot.destroy();
       aiBots.length = 0;
 
-      // Spawn 10 Active AI Snakes
       for (let i = 0; i < 10; i++) {
         spawnAIBot();
       }
     }
 
     /* ==========================================================================
-       8. SMART DEADZONE CONTROLS (Fixes the 360 mouse spin issue!)
+       8. AUTHENTIC SNAKE.IO SCREEN-RELATIVE VECTOR STEERING
+       - The snake's heading is directed by (mouseX - screenCenterX, mouseY - screenCenterY)
+       - If the mouse is inside the snake/screen-center deadzone (radius < 45px), NO TURNING HAPPENS!
+       - The snake glides straight forward smoothly and NEVER enters a death spiral!
        ========================================================================== */
-    const raycaster = new THREE.Raycaster();
-    const groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
-    const mousePlanePoint = new THREE.Vector3();
-    let isMouseDown = false;
+    let pointerX = window.innerWidth / 2;
+    let pointerY = window.innerHeight / 2;
+    const DEADZONE_PIXELS = 45; // Generous screen pixel deadzone around snake head
 
-    function handlePointerSteer(clientX, clientY) {
+    function updatePlayerSteering() {
       if (!player || !player.isAlive || !isGameRunning) return;
 
-      const normX = (clientX / window.innerWidth) * 2 - 1;
-      const normY = -(clientY / window.innerHeight) * 2 + 1;
+      const centerX = window.innerWidth / 2;
+      const centerY = window.innerHeight / 2;
 
-      raycaster.setFromCamera({ x: normX, y: normY }, camera);
-      raycaster.ray.intersectPlane(groundPlane, mousePlanePoint);
+      const screenDx = pointerX - centerX;
+      const screenDy = pointerY - centerY;
+      const screenDist = Math.hypot(screenDx, screenDy);
 
-      if (mousePlanePoint) {
-        const dx = mousePlanePoint.x - player.x;
-        const dz = mousePlanePoint.z - player.z;
-        const dist = Math.hypot(dx, dz);
-
-        // =====================================================================
-        // CRITICAL FIX: DEADZONE THRESHOLD (2.8 world units)
-        // If cursor is directly on or very close to the head, DO NOT flip angle!
-        // =====================================================================
-        if (dist > 2.8) {
-          player.targetAngle = Math.atan2(dz, dx);
-        }
+      // CRITICAL SNAKE.IO RULE: Inside deadzone circle around head = maintain current direction!
+      if (screenDist >= DEADZONE_PIXELS) {
+        // In 3D perspective, screenDx is +X (world X), screenDy is +Y on screen (world +Z)
+        player.targetAngle = Math.atan2(screenDy, screenDx);
       }
     }
 
-    // Mouse Listeners
     window.addEventListener('mousemove', e => {
-      handlePointerSteer(e.clientX, e.clientY);
+      pointerX = e.clientX;
+      pointerY = e.clientY;
+      updatePlayerSteering();
     });
 
     window.addEventListener('mousedown', e => {
       if (e.target.closest('.hud-btn, .btn-main, .btn-secondary, .tag-input, .skin-card, .leaderboard-overlay')) return;
-      isMouseDown = true;
       if (player) player.isBoosting = true;
       document.getElementById('boost-hint').classList.add('active');
-      handlePointerSteer(e.clientX, e.clientY);
+      pointerX = e.clientX;
+      pointerY = e.clientY;
+      updatePlayerSteering();
     });
 
     window.addEventListener('mouseup', () => {
-      isMouseDown = false;
       if (player) player.isBoosting = false;
       document.getElementById('boost-hint').classList.remove('active');
     });
 
-    // Spacebar for Nitro Boost
     window.addEventListener('keydown', e => {
       if (e.code === 'Space' && player) {
         player.isBoosting = true;
@@ -1172,16 +1171,19 @@
       }
     });
 
-    // Mobile Touch Listeners
     window.addEventListener('touchmove', e => {
       if (e.touches.length > 0) {
-        handlePointerSteer(e.touches[0].clientX, e.touches[0].clientY);
+        pointerX = e.touches[0].clientX;
+        pointerY = e.touches[0].clientY;
+        updatePlayerSteering();
       }
     }, { passive: true });
 
     window.addEventListener('touchstart', e => {
       if (e.touches.length > 0) {
-        handlePointerSteer(e.touches[0].clientX, e.touches[0].clientY);
+        pointerX = e.touches[0].clientX;
+        pointerY = e.touches[0].clientY;
+        updatePlayerSteering();
       }
     }, { passive: true });
 
@@ -1195,7 +1197,6 @@
       if (player) player.isBoosting = false;
     });
 
-    // Responsive Resize
     window.addEventListener('resize', () => {
       camera.aspect = window.innerWidth / window.innerHeight;
       camera.updateProjectionMatrix();
@@ -1203,64 +1204,62 @@
     });
 
     /* ==========================================================================
-       9. COLLISION DETECTION & KILL MECHANICS
+       9. COLLISION DETECTION & KILL MECHANICS (100% SAFE SELF-PASSING)
        ========================================================================== */
     function checkCollisions() {
       const allSnakes = [player, ...aiBots].filter(s => s && s.isAlive);
 
       for (const snake of allSnakes) {
-        // 1. Food Consumption with generous magnet radius
+        // 1. Eat Food
         const headRadius = snake.baseRadius * 1.3;
         for (let i = foods.length - 1; i >= 0; i--) {
           const f = foods[i];
           const dist = Math.hypot(snake.x - f.x, snake.z - f.z);
           if (dist < headRadius + f.radius + 1.2) {
-            // Eat food!
             const gain = f.isSuper ? 28 : 6;
             snake.mass += gain;
             if (snake.isPlayer) {
               playSound(f.isSuper ? 'super_eat' : 'eat', 550 + Math.random() * 300);
             }
 
-            // Remove mesh and spawn new ambient food
             foodGroup.remove(f.mesh);
             foods.splice(i, 1);
 
-            // Keep arena stocked
             if (foods.length < 240) {
               const angle = Math.random() * Math.PI * 2;
-              const d = Math.sqrt(Math.random()) * (ARENA_RADIUS - 15);
+              const d = Math.sqrt(Math.random()) * (ARENA_RADIUS - 20);
               spawnFoodOrb(Math.cos(angle) * d, Math.sin(angle) * d, 0.8 + Math.random() * 0.6, null, Math.random() < 0.1);
             }
           }
         }
 
-        // 2. Head-on-Body Collision Check (Snake.io authentic rules)
-        for (const rival of allSnakes) {
-          if (rival === snake) continue; // Passing through own body is safe!
+        // 2. Head-on-Body Collision Check (Only between DIFFERENT snakes!)
+        if (snake.invulnerableTimer <= 0) {
+          for (const rival of allSnakes) {
+            if (rival === snake) continue; // Passing through own body is 100% SAFE!
 
-          const rivalActiveSegs = Math.min(rival.bodyMeshes.length, Math.floor(12 + (rival.mass * 0.18)));
-          for (let s = 0; s < rivalActiveSegs; s += 2) {
-            const histIdx = Math.min(rival.history.length - 1, (s + 1) * 3);
-            const seg = rival.history[histIdx];
-            if (seg) {
-              const hitDist = Math.hypot(snake.x - seg.x, snake.z - seg.z);
-              if (hitDist < snake.baseRadius + rival.baseRadius * 0.85) {
-                // Snake crashed into rival!
-                rival.kills++;
-                if (rival.isPlayer) {
-                  showKillToast(`YOU ELIMINATED ${snake.name}! 💥`);
-                  playSound('kill');
+            const rivalActiveSegs = Math.min(rival.bodyMeshes.length, Math.floor(12 + (rival.mass * 0.18)));
+            for (let s = 0; s < rivalActiveSegs; s += 2) {
+              const histIdx = Math.min(rival.history.length - 1, (s + 1) * 3);
+              const seg = rival.history[histIdx];
+              if (seg) {
+                const hitDist = Math.hypot(snake.x - seg.x, snake.z - seg.z);
+                if (hitDist < snake.baseRadius + rival.baseRadius * 0.85) {
+                  rival.kills++;
+                  if (rival.isPlayer) {
+                    showKillToast(`YOU ELIMINATED ${snake.name}! 💥`);
+                    playSound('kill');
+                  }
+                  snake.die(`collided with ${rival.name}`);
+                  break;
                 }
-                snake.die(`collided with ${rival.name}`);
-                break;
               }
             }
           }
         }
       }
 
-      // Respawn AI bots if any died
+      // Respawn Dead Bots
       for (let i = aiBots.length - 1; i >= 0; i--) {
         if (!aiBots[i].isAlive) {
           aiBots[i].destroy();
@@ -1302,14 +1301,12 @@
     function updateHUDAndLeaderboard() {
       if (!player) return;
 
-      // Stats
       const massVal = Math.floor(player.mass);
-      const lenVal = Math.min(180, Math.floor(12 + (player.mass * 0.18)));
+      const lenVal = Math.min(200, Math.floor(12 + (player.mass * 0.18)));
       document.getElementById('hud-mass').textContent = massVal;
       document.getElementById('hud-len').textContent = lenVal;
       document.getElementById('hud-kills').textContent = player.kills;
 
-      // Rank & Leaderboard
       const allActive = [player, ...aiBots].filter(s => s && s.isAlive);
       allActive.sort((a, b) => b.mass - a.mass);
 
@@ -1317,10 +1314,8 @@
       if (playerRank > 0 && playerRank < peakRank) peakRank = playerRank;
       document.getElementById('hud-rank').textContent = `#${playerRank || 10}`;
 
-      // Crown the #1 Snake
       allActive.forEach((s, idx) => s.setCrown(idx === 0));
 
-      // Build Top 10 HTML
       const lbList = document.getElementById('lb-list');
       lbList.innerHTML = '';
       allActive.slice(0, 10).forEach((s, idx) => {
@@ -1338,7 +1333,6 @@
       mCtx.save();
       mCtx.translate(70, 70);
 
-      // Radar Grid Circle
       mCtx.strokeStyle = 'rgba(5,255,161,0.2)';
       mCtx.lineWidth = 1;
       mCtx.beginPath(); mCtx.arc(0, 0, 60, 0, Math.PI * 2); mCtx.stroke();
@@ -1346,7 +1340,6 @@
 
       const scale = 60 / ARENA_RADIUS;
 
-      // Draw AI Snakes
       for (const bot of aiBots) {
         if (!bot.isAlive) continue;
         mCtx.fillStyle = '#ff007f';
@@ -1355,7 +1348,6 @@
         mCtx.fill();
       }
 
-      // Draw Player Snake
       if (player && player.isAlive) {
         mCtx.fillStyle = '#05ffa1';
         mCtx.shadowColor = '#05ffa1';
@@ -1381,18 +1373,17 @@
       const deltaTime = (now - lastTime) / 1000;
       lastTime = now;
 
-      // Animate Foods (floating bobbing & rotating crystals)
       for (const f of foods) {
         f.mesh.rotation.y += f.rotSpeed;
         f.mesh.rotation.x += f.rotSpeed * 0.5;
         f.mesh.position.y = 1.2 + Math.sin(now * 0.003 + f.bobOffset) * 0.4;
       }
 
-      // Update Snakes
       if (player && player.isAlive) {
+        updatePlayerSteering();
         player.update(deltaTime, foods, aiBots);
 
-        // Smooth Dynamic 3D Camera Follow with Mass Zoom-Out
+        // Dynamic 3D Camera Follow
         const zoomOut = Math.min(90, player.mass * 0.07);
         const targetCamX = player.x;
         const targetCamY = 110 + zoomOut;
@@ -1482,11 +1473,14 @@
       peakRank = 10;
       isGameRunning = true;
 
+      // Reset mouse pointer position to forward offset
+      pointerX = window.innerWidth / 2;
+      pointerY = window.innerHeight / 2 - 100;
+
       document.getElementById('gameover-modal').style.display = 'none';
       initArena();
     }
 
-    // Auto load player initials
     if (window.ArcadeLeaderboard) {
       const savedTag = window.ArcadeLeaderboard.getPlayerTag();
       if (savedTag) document.getElementById('player-tag-input').value = savedTag;
