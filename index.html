@@ -452,10 +452,20 @@
       border-color: #fff;
       color: #fff;
     }
+    #confetti-canvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      pointer-events: none;
+      z-index: 9999;
+    }
   </style>
 </head>
 <body>
   <div id="game-container">
+    <canvas id="confetti-canvas"></canvas>
     <canvas id="webgl-canvas"></canvas>
 
     <!-- Top HUD Header -->
@@ -588,9 +598,72 @@
     let playerName = localStorage.getItem('neon_viper_name') || (window.ArcadeLeaderboard ? window.ArcadeLeaderboard.getPlayerTag() : 'VIPER');
 
     /* ==========================================================================
-       2. AUDIO SYNTHESIS ENGINE
+       2. DOPAMINE SEROTONIN AUDIO & CONFETTI ENGINE (Spectrum Standard)
        ========================================================================== */
+    const confettiCanvas = document.getElementById('confetti-canvas');
+    const confettiCtx = confettiCanvas ? confettiCanvas.getContext('2d') : null;
+    const confettiParticles = [];
+    const QUAD_COLORS = ['#00f5ff', '#ff007f', '#ffd166', '#05ffa1', '#8ab4f8', '#f28b82', '#c084fc'];
+
+    function resizeConfetti() {
+      if (confettiCanvas) {
+        confettiCanvas.width = window.innerWidth;
+        confettiCanvas.height = window.innerHeight;
+      }
+    }
+    window.addEventListener('resize', resizeConfetti);
+    resizeConfetti();
+
+    function explodeConfetti(x = window.innerWidth / 2, y = window.innerHeight * 0.4, count = 55) {
+      for (let i = 0; i < count; i++) {
+        confettiParticles.push({
+          x, y,
+          color: QUAD_COLORS[Math.floor(Math.random() * QUAD_COLORS.length)],
+          size: Math.random() * 8 + 5,
+          speedX: (Math.random() - 0.5) * 16,
+          speedY: (Math.random() - 0.8) * 18,
+          gravity: 0.45,
+          opacity: 1,
+          decay: Math.random() * 0.02 + 0.015,
+          rotation: Math.random() * 360,
+          rotSpeed: (Math.random() - 0.5) * 10
+        });
+      }
+    }
+
+    function renderConfetti() {
+      if (confettiCtx && confettiCanvas) {
+        confettiCtx.clearRect(0, 0, confettiCanvas.width, confettiCanvas.height);
+        for (let i = confettiParticles.length - 1; i >= 0; i--) {
+          const p = confettiParticles[i];
+          p.x += p.speedX;
+          p.y += p.speedY;
+          p.speedY += p.gravity;
+          p.opacity -= p.decay;
+          p.rotation += p.rotSpeed;
+
+          if (p.opacity <= 0) {
+            confettiParticles.splice(i, 1);
+            continue;
+          }
+
+          confettiCtx.save();
+          confettiCtx.globalAlpha = Math.max(0, p.opacity);
+          confettiCtx.translate(p.x, p.y);
+          confettiCtx.rotate((p.rotation * Math.PI) / 180);
+          confettiCtx.fillStyle = p.color;
+          confettiCtx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size);
+          confettiCtx.restore();
+        }
+      }
+      requestAnimationFrame(renderConfetti);
+    }
+    renderConfetti();
+
     let audioCtx = null;
+    let eatPitchStep = 0;
+    const EAT_SCALE = [440.00, 493.88, 554.37, 659.25, 739.99, 880.00]; // Pentatonic glockenspiel scale
+
     function getAudio() {
       if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
       if (audioCtx.state === 'suspended') audioCtx.resume();
@@ -600,52 +673,72 @@
     function playSound(type, freq = 440) {
       try {
         const ctx = getAudio();
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
         const now = ctx.currentTime;
 
         if (type === 'eat') {
-          osc.type = 'sine';
-          osc.frequency.setValueAtTime(freq, now);
-          osc.frequency.exponentialRampToValueAtTime(freq * 1.5, now + 0.08);
-          gain.gain.setValueAtTime(0.08, now);
-          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
-          osc.connect(gain); gain.connect(ctx.destination);
-          osc.start(now); osc.stop(now + 0.08);
-        } else if (type === 'super_eat') {
-          osc.type = 'triangle';
-          osc.frequency.setValueAtTime(freq, now);
-          osc.frequency.exponentialRampToValueAtTime(freq * 2.2, now + 0.18);
-          gain.gain.setValueAtTime(0.12, now);
-          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
-          osc.connect(gain); gain.connect(ctx.destination);
-          osc.start(now); osc.stop(now + 0.18);
-        } else if (type === 'kill') {
-          osc.type = 'sawtooth';
-          osc.frequency.setValueAtTime(300, now);
-          osc.frequency.linearRampToValueAtTime(800, now + 0.25);
-          gain.gain.setValueAtTime(0.15, now);
-          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
-          osc.connect(gain); gain.connect(ctx.destination);
-          osc.start(now); osc.stop(now + 0.3);
-        } else if (type === 'crash') {
-          osc.type = 'sawtooth';
-          osc.frequency.setValueAtTime(180, now);
-          osc.frequency.exponentialRampToValueAtTime(25, now + 0.45);
-          gain.gain.setValueAtTime(0.35, now);
-          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
-          osc.connect(gain); gain.connect(ctx.destination);
-          osc.start(now); osc.stop(now + 0.45);
+          // Tactile musical water-drop bubble pop (ascends musical scale with rapid eating!)
+          const f = EAT_SCALE[eatPitchStep % EAT_SCALE.length];
+          eatPitchStep = (eatPitchStep + 1) % EAT_SCALE.length;
 
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(f, now);
+          osc.frequency.exponentialRampToValueAtTime(f * 1.15, now + 0.05);
+
+          gain.gain.setValueAtTime(0.12, now);
+          gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.06);
+
+          osc.connect(gain); gain.connect(ctx.destination);
+          osc.start(now); osc.stop(now + 0.065);
+        } else if (type === 'super_eat') {
+          // Sparkling dual chime
+          [659.25, 1046.50].forEach((f, i) => {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(f, now + i * 0.03);
+            gain.gain.setValueAtTime(0.14, now + i * 0.03);
+            gain.gain.exponentialRampToValueAtTime(0.0001, now + i * 0.03 + 0.22);
+            osc.connect(gain); gain.connect(ctx.destination);
+            osc.start(now + i * 0.03); osc.stop(now + i * 0.03 + 0.22);
+          });
+        } else if (type === 'kill') {
+          // Royal Dopamine Fanfare (C5, E5, G5, C6, E6) + Velvet Sub-bass + Confetti
+          explodeConfetti(window.innerWidth / 2, window.innerHeight * 0.35, 65);
+          const fanfare = [523.25, 659.25, 783.99, 1046.50, 1318.51];
+          fanfare.forEach((f, i) => {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(f, now + i * 0.05);
+            gain.gain.setValueAtTime(0.18, now + i * 0.05);
+            gain.gain.exponentialRampToValueAtTime(0.0001, now + i * 0.05 + 0.38);
+            osc.connect(gain); gain.connect(ctx.destination);
+            osc.start(now + i * 0.05); osc.stop(now + i * 0.05 + 0.38);
+          });
+
+          // Sub-bass thud
           const sub = ctx.createOscillator();
           const subGain = ctx.createGain();
           sub.type = 'sine';
           sub.frequency.setValueAtTime(95, now);
-          sub.frequency.exponentialRampToValueAtTime(20, now + 0.4);
-          subGain.gain.setValueAtTime(0.4, now);
-          subGain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+          sub.frequency.exponentialRampToValueAtTime(36, now + 0.35);
+          subGain.gain.setValueAtTime(0.28, now);
+          subGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.35);
           sub.connect(subGain); subGain.connect(ctx.destination);
-          sub.start(now); sub.stop(now + 0.4);
+          sub.start(now); sub.stop(now + 0.35);
+        } else if (type === 'crash') {
+          // Cushioned lowpass sine drop (no harsh buzzing)
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(140, now);
+          osc.frequency.exponentialRampToValueAtTime(35, now + 0.35);
+          gain.gain.setValueAtTime(0.3, now);
+          gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.35);
+          osc.connect(gain); gain.connect(ctx.destination);
+          osc.start(now); osc.stop(now + 0.35);
         }
       } catch(e){}
     }
