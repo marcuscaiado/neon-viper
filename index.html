@@ -735,7 +735,7 @@
         this.z = startZ;
         this.angle = Math.random() * Math.PI * 2;
         this.targetAngle = this.angle;
-        this.speed = 0.76; // Comfortable, deliberate Snake.io slither speed
+        this.speed = 0.44; // Slowed down by ~0.3x for calm, authentic Snake.io slither control
         this.isBoosting = false;
 
         // Spawn Invulnerability Shield (3.0s protection)
@@ -853,17 +853,17 @@
         while (diff > Math.PI) diff -= Math.PI * 2;
 
         // Controlled turn rate: snake turns in smooth arcs, never instantly 180s
-        const maxTurnRate = this.isBoosting ? 0.088 : 0.072;
+        const maxTurnRate = this.isBoosting ? 0.076 : 0.058;
         const turnStep = Math.sign(diff) * Math.min(Math.abs(diff), maxTurnRate);
         this.angle += turnStep;
 
         // Speed & Nitro
-        const currentSpeed = (this.isBoosting && this.mass > 40) ? this.speed * 1.78 : this.speed;
-        if (this.isBoosting && this.mass > 40 && Math.random() < 0.18) {
-          this.mass -= 0.45;
-          if (this.history.length > 20 && Math.random() < 0.3) {
+        const currentSpeed = (this.isBoosting && this.mass > 40) ? this.speed * 1.75 : this.speed;
+        if (this.isBoosting && this.mass > 40 && Math.random() < 0.16) {
+          this.mass -= 0.4;
+          if (this.history.length > 20 && Math.random() < 0.25) {
             const tailPt = this.history[Math.min(this.history.length - 1, 30)];
-            spawnFruitDrop(tailPt.x + (Math.random()-0.5)*2, tailPt.z + (Math.random()-0.5)*2, null, 7.0);
+            spawnFruitDrop(tailPt.x + (Math.random()-0.5)*2, tailPt.z + (Math.random()-0.5)*2, null, 5.0);
           }
         }
 
@@ -992,18 +992,21 @@
 
         playSound('crash', 120);
 
-        // Explode into delicious 3D fruits & candies along the entire length!
+        // Explode into delicious 3D fruits with STRICT 5-SECOND EXPIRATION!
+        // To prevent lag and room freeze, drop consolidated juicy fruits (max 10-12 drops total)
         const activeSegments = Math.min(this.bodyMeshes.length, Math.floor(12 + (this.mass * 0.18)));
-        for (let i = 0; i < activeSegments; i++) {
+        const dropInterval = Math.max(3, Math.floor(activeSegments / 10));
+
+        for (let i = 1; i < activeSegments; i += dropInterval) {
+          if (foods.length >= 85) break; // Strict arena limit prevents memory bloat
           const histIdx = Math.min(this.history.length - 1, (i + 1) * 3);
           const pt = this.history[histIdx];
           if (pt) {
-            // Drops juicy 3D fruits/candies with 7.0 second decay timer
             spawnFruitDrop(
-              pt.x + (Math.random() - 0.5) * 3.5,
-              pt.z + (Math.random() - 0.5) * 3.5,
+              pt.x + (Math.random() - 0.5) * 3.0,
+              pt.z + (Math.random() - 0.5) * 3.0,
               null,
-              7.0 // Disappears in 7 seconds!
+              5.0 // STRICT 5.0 SECONDS TIMEOUT
             );
           }
         }
@@ -1022,38 +1025,47 @@
     }
 
     /* ==========================================================================
-       6. 3D CARTOON FRUITS & CANDIES (7-Second Decay Timer & Warning Blink)
+       6. 3D CARTOON FRUITS (Distinct from Snakes, 5-Second Lifetime)
        ========================================================================== */
     const FRUIT_TYPES = [
-      { id: 'watermelon', name: 'Watermelon Slice 🍉', color: 0xff1744, isSuper: true, value: 35 },
-      { id: 'strawberry', name: 'Strawberry 🍓', color: 0xff2a55, isSuper: false, value: 12 },
-      { id: 'candy', name: 'Pastel Candy 🍬', color: 0x00f5ff, isSuper: false, value: 14 },
-      { id: 'orange', name: 'Juicy Orange 🍊', color: 0xff9100, isSuper: false, value: 10 },
-      { id: 'apple', name: 'Crisp Apple 🍏', color: 0x05ffa1, isSuper: false, value: 10 },
-      { id: 'grape', name: 'Sweet Grape 🍇', color: 0xb967ff, isSuper: false, value: 12 },
-      { id: 'star_candy', name: 'Star Candy ⭐', color: 0xffd700, isSuper: true, value: 40 }
+      { id: 'watermelon', name: 'Watermelon Slice 🍉', isSuper: true, value: 35 },
+      { id: 'strawberry', name: 'Strawberry 🍓', isSuper: false, value: 14 },
+      { id: 'apple', name: 'Crisp Apple 🍎', isSuper: false, value: 12 },
+      { id: 'orange', name: 'Juicy Orange 🍊', isSuper: false, value: 12 },
+      { id: 'banana', name: 'Sweet Banana 🍌', isSuper: false, value: 15 },
+      { id: 'grapes', name: 'Purple Grapes 🍇', isSuper: false, value: 14 }
     ];
 
     const foods = [];
     const foodGroup = new THREE.Group();
     scene.add(foodGroup);
 
-    // Fruit Geometries & Materials
-    const watermelonFleshGeo = new THREE.SphereGeometry(1.3, 16, 12, 0, Math.PI);
+    // Shared low-poly geometries & materials for ultra-smooth 60fps rendering
+    const leafMat = new THREE.MeshBasicMaterial({ color: 0x00e676 });
+    const stemMat = new THREE.MeshBasicMaterial({ color: 0x6d4c41 });
+
+    const watermelonFleshGeo = new THREE.SphereGeometry(1.3, 14, 10, 0, Math.PI);
     const watermelonFleshMat = new THREE.MeshStandardMaterial({ color: 0xff1744, roughness: 0.3 });
-    const watermelonRindGeo = new THREE.TorusGeometry(1.3, 0.22, 8, 16, Math.PI);
-    const watermelonRindMat = new THREE.MeshStandardMaterial({ color: 0x05ffa1, roughness: 0.4 });
+    const watermelonRindGeo = new THREE.TorusGeometry(1.3, 0.22, 6, 14, Math.PI);
+    const watermelonRindMat = new THREE.MeshStandardMaterial({ color: 0x00e676, roughness: 0.4 });
 
-    const strawberryGeo = new THREE.ConeGeometry(0.9, 1.4, 12);
-    const strawberryMat = new THREE.MeshStandardMaterial({ color: 0xff2a55, roughness: 0.3 });
-    const leafGeo = new THREE.BoxGeometry(0.7, 0.12, 0.7);
-    const leafMat = new THREE.MeshBasicMaterial({ color: 0x05ffa1 });
+    const strawberryGeo = new THREE.ConeGeometry(0.85, 1.4, 10);
+    const strawberryMat = new THREE.MeshStandardMaterial({ color: 0xff1744, roughness: 0.3 });
+    const leafGeo = new THREE.BoxGeometry(0.55, 0.1, 0.55);
 
-    const candyGeo = new THREE.CylinderGeometry(0.85, 0.85, 0.6, 16);
-    const candyMat = new THREE.MeshStandardMaterial({ color: 0x00f5ff, roughness: 0.1, metalness: 0.2 });
+    const appleGeo = new THREE.SphereGeometry(0.9, 12, 12);
+    const appleMat = new THREE.MeshStandardMaterial({ color: 0xff1744, roughness: 0.2 });
+    const stemGeo = new THREE.CylinderGeometry(0.08, 0.08, 0.5, 6);
+    const appleLeafGeo = new THREE.BoxGeometry(0.4, 0.08, 0.25);
 
-    const sphereFruitGeo = new THREE.SphereGeometry(0.85, 14, 14);
-    const starFruitGeo = new THREE.DodecahedronGeometry(1.1, 0);
+    const orangeGeo = new THREE.SphereGeometry(0.9, 12, 12);
+    const orangeMat = new THREE.MeshStandardMaterial({ color: 0xff6d00, roughness: 0.3 });
+
+    const bananaGeo = new THREE.CylinderGeometry(0.45, 0.3, 1.6, 8);
+    const bananaMat = new THREE.MeshStandardMaterial({ color: 0xffea00, roughness: 0.2 });
+
+    const grapeSphereGeo = new THREE.SphereGeometry(0.4, 8, 8);
+    const grapeMat = new THREE.MeshStandardMaterial({ color: 0xaa00ff, roughness: 0.2 });
 
     function createFruitMesh(type) {
       const container = new THREE.Group();
@@ -1072,53 +1084,71 @@
         const leaves = new THREE.Mesh(leafGeo, leafMat);
         leaves.position.y = 0.7;
         container.add(leaves);
-      } else if (type.id === 'candy') {
-        const candyMesh = new THREE.Mesh(candyGeo, candyMat);
-        candyMesh.rotation.z = Math.PI / 4;
-        container.add(candyMesh);
-      } else if (type.id === 'star_candy') {
-        const starMat = new THREE.MeshStandardMaterial({ color: 0xffd700, emissive: 0xffb700, emissiveIntensity: 0.6, roughness: 0.2 });
-        const starMesh = new THREE.Mesh(starFruitGeo, starMat);
-        container.add(starMesh);
+      } else if (type.id === 'apple') {
+        const apple = new THREE.Mesh(appleGeo, appleMat);
+        container.add(apple);
+        const stem = new THREE.Mesh(stemGeo, stemMat);
+        stem.position.set(0, 0.95, 0);
+        container.add(stem);
+        const leaf = new THREE.Mesh(appleLeafGeo, leafMat);
+        leaf.position.set(0.25, 1.05, 0);
+        leaf.rotation.z = 0.4;
+        container.add(leaf);
+      } else if (type.id === 'orange') {
+        const orange = new THREE.Mesh(orangeGeo, orangeMat);
+        container.add(orange);
+        const leaf = new THREE.Mesh(appleLeafGeo, leafMat);
+        leaf.position.set(0, 0.95, 0);
+        container.add(leaf);
+      } else if (type.id === 'banana') {
+        const banana = new THREE.Mesh(bananaGeo, bananaMat);
+        banana.rotation.z = Math.PI / 3.5;
+        container.add(banana);
+        const stem = new THREE.Mesh(stemGeo, leafMat);
+        stem.position.set(0.6, 0.6, 0);
+        container.add(stem);
       } else {
-        const fMat = new THREE.MeshStandardMaterial({
-          color: new THREE.Color(type.color),
-          emissive: new THREE.Color(type.color),
-          emissiveIntensity: 0.3,
-          roughness: 0.25
+        // Grape Cluster (3 spheres + leaf)
+        [[-0.3, 0.2, 0], [0.3, 0.2, 0], [0, -0.25, 0]].forEach(([gx, gy, gz]) => {
+          const g = new THREE.Mesh(grapeSphereGeo, grapeMat);
+          g.position.set(gx, gy, gz);
+          container.add(g);
         });
-        const ball = new THREE.Mesh(sphereFruitGeo, fMat);
-        container.add(ball);
+        const leaf = new THREE.Mesh(appleLeafGeo, leafMat);
+        leaf.position.set(0, 0.55, 0);
+        container.add(leaf);
       }
 
       return container;
     }
 
-    function spawnFruitDrop(x, z, customType = null, duration = 7.0) {
+    function spawnFruitDrop(x, z, customType = null, duration = 5.0) {
+      if (foods.length >= 85) return; // Strict ceiling prevents room freeze
+
       const type = customType || FRUIT_TYPES[Math.floor(Math.random() * FRUIT_TYPES.length)];
       const mesh = createFruitMesh(type);
-      mesh.position.set(x, 1.2, z);
+      mesh.position.set(x, 1.4, z);
       foodGroup.add(mesh);
 
       foods.push({
         mesh,
         x,
         z,
-        radius: type.isSuper ? 1.6 : 1.1,
+        radius: type.isSuper ? 1.6 : 1.2,
         type,
         isSuper: !!type.isSuper,
-        life: duration, // 7.0 seconds countdown!
+        life: duration, // Exactly 5.0 seconds!
         maxLife: duration,
         bobOffset: Math.random() * Math.PI * 2,
         rotSpeed: 0.02 + Math.random() * 0.03
       });
     }
 
-    // Populate Initial Orchard with Fresh Fruits (7-10s duration)
-    for (let i = 0; i < 220; i++) {
+    // Populate Initial Orchard with Fresh Fruits (Clean 5s baseline, 65 items)
+    for (let i = 0; i < 65; i++) {
       const angle = Math.random() * Math.PI * 2;
-      const dist = Math.sqrt(Math.random()) * (ARENA_RADIUS - 20);
-      spawnFruitDrop(Math.cos(angle) * dist, Math.sin(angle) * dist, null, 7.0 + Math.random() * 3.0);
+      const dist = Math.sqrt(Math.random()) * (ARENA_RADIUS - 25);
+      spawnFruitDrop(Math.cos(angle) * dist, Math.sin(angle) * dist, null, 5.0 + Math.random() * 1.5);
     }
 
     /* ==========================================================================
@@ -1158,7 +1188,7 @@
       for (const bot of aiBots) bot.destroy();
       aiBots.length = 0;
 
-      for (let i = 0; i < 10; i++) {
+      for (let i = 0; i < 6; i++) {
         spawnAIBot();
       }
     }
@@ -1311,12 +1341,12 @@
         }
       }
 
-      // Respawn Dead Bots
+      // Respawn Dead Bots (Spaced out to prevent room crowding and lag)
       for (let i = aiBots.length - 1; i >= 0; i--) {
         if (!aiBots[i].isAlive) {
           aiBots[i].destroy();
           aiBots.splice(i, 1);
-          setTimeout(() => { if (isGameRunning) spawnAIBot(); }, 2500 + Math.random() * 2000);
+          setTimeout(() => { if (isGameRunning && aiBots.length < 6) spawnAIBot(); }, 4000 + Math.random() * 2500);
         }
       }
     }
@@ -1425,33 +1455,33 @@
       const deltaTime = (now - lastTime) / 1000;
       lastTime = now;
 
-      // Animate & Age Fruits / Candies (7s decay timer with blink & shrink warning)
+      // Animate & Age Fruits (Strict 5s decay timer with blink & shrink warning)
       for (let i = foods.length - 1; i >= 0; i--) {
         const f = foods[i];
         f.life -= deltaTime;
         f.mesh.rotation.y += f.rotSpeed;
-        f.mesh.position.y = 1.3 + Math.sin(now * 0.003 + f.bobOffset) * 0.4;
+        f.mesh.position.y = 1.35 + Math.sin(now * 0.003 + f.bobOffset) * 0.35;
 
-        // Warning blink & shrink in last 2.2 seconds before disappearing
-        if (f.life < 2.2) {
-          const blink = Math.sin(now * 0.025) > 0;
-          const shrink = Math.max(0.01, f.life / 2.2);
+        // Warning blink & shrink in last 1.8 seconds before disappearing
+        if (f.life < 1.8) {
+          const blink = Math.sin(now * 0.03) > 0;
+          const shrink = Math.max(0.01, f.life / 1.8);
           f.mesh.scale.set(shrink, shrink, shrink);
-          f.mesh.visible = blink || f.life > 0.8;
+          f.mesh.visible = blink || f.life > 0.6;
         }
 
-        // Expired -> vanish cleanly after 7 seconds
+        // Expired -> vanish cleanly after exactly 5 seconds
         if (f.life <= 0) {
           foodGroup.remove(f.mesh);
           foods.splice(i, 1);
         }
       }
 
-      // Maintain fresh baseline orchard
-      if (foods.length < 140) {
+      // Maintain fresh baseline orchard (clean 50-60 fruits)
+      if (foods.length < 50) {
         const angle = Math.random() * Math.PI * 2;
-        const dist = Math.sqrt(Math.random()) * (ARENA_RADIUS - 20);
-        spawnFruitDrop(Math.cos(angle) * dist, Math.sin(angle) * dist, null, 7.0 + Math.random() * 2.5);
+        const dist = Math.sqrt(Math.random()) * (ARENA_RADIUS - 25);
+        spawnFruitDrop(Math.cos(angle) * dist, Math.sin(angle) * dist, null, 5.0 + Math.random() * 1.5);
       }
 
       if (player && player.isAlive) {
