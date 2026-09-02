@@ -16,19 +16,29 @@
       --panel-bg: rgba(10, 14, 28, 0.85);
     }
     * { margin:0; padding:0; box-sizing:border-box; touch-action:none; user-select:none; }
-    body {
+    html, body {
       background: var(--dark-bg);
       color: #fff;
       font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
       overflow: hidden;
-      width: 100vw;
-      height: 100vh;
+      width: 100%;
+      height: 100%;
+      height: 100dvh;
+      min-height: -webkit-fill-available;
+      position: fixed;
+      top: 0;
+      left: 0;
+      touch-action: none;
+      overscroll-behavior: none;
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
       cursor: crosshair;
     }
     #game-container {
       position: relative;
-      width: 100vw;
-      height: 100vh;
+      width: 100%;
+      height: 100%;
+      height: 100dvh;
       overflow: hidden;
     }
     canvas#webgl-canvas {
@@ -238,9 +248,23 @@
     @media (max-width: 768px) {
       .mobile-boost-btn { display: flex; }
       .boost-indicator { display: none; }
-      .leaderboard-overlay { width: 140px; font-size: 10px; }
+      .hud-header { top: 10px; left: 10px; right: 10px; }
+      .hud-stats-card { padding: 8px 14px; gap: 12px; }
+      .stat-val { font-size: 17px; }
+      .leaderboard-overlay { width: 135px; top: 68px; right: 10px; font-size: 10px; padding: 8px 10px; }
       .lb-name { max-width: 65px; }
-      .minimap-container { width: 105px; height: 105px; bottom: 16px; left: 16px; }
+      .minimap-container { width: 95px; height: 95px; bottom: 16px; left: 16px; }
+    }
+    @media (max-width: 480px) {
+      .hud-header { top: 8px; left: 8px; right: 8px; }
+      .hud-stats-card { padding: 6px 10px; gap: 8px; border-radius: 8px; }
+      .stat-label { font-size: 8px; }
+      .stat-val { font-size: 14px; }
+      .hud-btn { padding: 6px 10px; font-size: 11px; }
+      .leaderboard-overlay { width: 115px; top: 56px; right: 8px; font-size: 9px; padding: 6px 8px; }
+      .lb-name { max-width: 50px; }
+      .minimap-container { width: 75px; height: 75px; bottom: 12px; left: 12px; }
+      .mobile-boost-btn { width: 62px; height: 62px; bottom: 14px; right: 14px; font-size: 11px; }
     }
 
     /* Kill Notification Banner */
@@ -617,12 +641,14 @@
     }
 
     /* ==========================================================================
-       3. THREE.JS 3D SCENE & ENGINE SETUP
+       3. THREE.JS 3D SCENE & ENGINE SETUP (Optimized for Mobile Browsers & PC)
        ========================================================================== */
+    const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || window.innerWidth <= 800;
     const ARENA_RADIUS = 300;
     const canvas = document.getElementById('webgl-canvas');
-    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false, powerPreference: 'high-performance' });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: !isMobile, alpha: false, powerPreference: 'high-performance' });
+    // Clamp DPR on mobile to 1.25 to maintain 60 FPS on high-DPI AMOLED screens (like Galaxy A55)
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, isMobile ? 1.25 : 2.0));
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.15;
@@ -631,8 +657,9 @@
     scene.background = new THREE.Color(0x060814);
     scene.fog = new THREE.FogExp2(0x060814, 0.0025);
 
-    const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 1, 1200);
-    camera.position.set(0, 110, 85);
+    const initialAspect = window.innerWidth / window.innerHeight;
+    const camera = new THREE.PerspectiveCamera(initialAspect < 1.0 ? 70 : 55, initialAspect, 1, 1200);
+    camera.position.set(0, initialAspect < 1.0 ? 125 : 110, initialAspect < 1.0 ? 72 : 85);
     camera.lookAt(0, 0, 0);
 
     // Lighting
@@ -1255,19 +1282,25 @@
 
     window.addEventListener('touchmove', e => {
       if (e.touches.length > 0) {
+        if (!e.target.closest('.hud-btn, .btn-main, .btn-secondary, .tag-input, .skin-card, .mobile-boost-btn')) {
+          e.preventDefault();
+        }
         pointerX = e.touches[0].clientX;
         pointerY = e.touches[0].clientY;
         updatePlayerSteering();
       }
-    }, { passive: true });
+    }, { passive: false });
 
     window.addEventListener('touchstart', e => {
       if (e.touches.length > 0) {
+        if (!e.target.closest('.hud-btn, .btn-main, .btn-secondary, .tag-input, .skin-card, .mobile-boost-btn')) {
+          e.preventDefault();
+        }
         pointerX = e.touches[0].clientX;
         pointerY = e.touches[0].clientY;
         updatePlayerSteering();
       }
-    }, { passive: true });
+    }, { passive: false });
 
     const mobileBoostBtn = document.getElementById('mobile-boost');
     mobileBoostBtn.addEventListener('touchstart', e => {
@@ -1279,11 +1312,17 @@
       if (player) player.isBoosting = false;
     });
 
-    window.addEventListener('resize', () => {
-      camera.aspect = window.innerWidth / window.innerHeight;
+    function handleResize() {
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      const aspect = w / h;
+      camera.aspect = aspect;
+      camera.fov = aspect < 1.0 ? 70 : 55;
       camera.updateProjectionMatrix();
-      renderer.setSize(window.innerWidth, window.innerHeight);
-    });
+      renderer.setSize(w, h);
+    }
+    window.addEventListener('resize', handleResize);
+    window.addEventListener('orientationchange', () => setTimeout(handleResize, 150));
 
     /* ==========================================================================
        9. COLLISION DETECTION & KILL MECHANICS (100% SAFE SELF-PASSING)
@@ -1488,11 +1527,12 @@
         updatePlayerSteering();
         player.update(deltaTime, foods, aiBots);
 
-        // Dynamic 3D Camera Follow
+        // Dynamic 3D Camera Follow (Optimized for Mobile Portrait & Landscape)
+        const isPortrait = window.innerWidth < window.innerHeight;
         const zoomOut = Math.min(90, player.mass * 0.07);
         const targetCamX = player.x;
-        const targetCamY = 110 + zoomOut;
-        const targetCamZ = player.z + 85 + (zoomOut * 0.75);
+        const targetCamY = (isPortrait ? 128 : 110) + zoomOut;
+        const targetCamZ = player.z + (isPortrait ? 72 : 85) + (zoomOut * 0.75);
 
         camera.position.x += (targetCamX - camera.position.x) * 0.08;
         camera.position.y += (targetCamY - camera.position.y) * 0.08;
