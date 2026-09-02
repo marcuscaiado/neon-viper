@@ -503,7 +503,7 @@
 
     <!-- Nitro Indicator / Hints -->
     <div class="boost-indicator" id="boost-hint">
-      ⚡ Move mouse away from center to steer &bull; Hold <b style="color:#fff;">CLICK</b> or <b style="color:#fff;">SPACE</b> for NITRO
+      ⚡ Steer with mouse &bull; <b style="color:#ff007f;">AVOID WALLS & SELF-COLLISION 💥</b> &bull; Hold <b style="color:#fff;">CLICK</b> / <b style="color:#fff;">SPACE</b> for NITRO
     </div>
 
     <!-- Mobile Boost Button -->
@@ -518,7 +518,7 @@
     <div class="modal-backdrop" id="start-modal">
       <div class="modal-card">
         <h1 class="modal-title">NEON VIPER 3D</h1>
-        <p class="modal-subtitle">Fast-Paced 3D Slither Arena &bull; Cut Off Rivals &bull; Grow Massive</p>
+        <p class="modal-subtitle">Fast-Paced 3D Slither Arena &bull; Don't Touch Walls or Your Own Body &bull; Grow Massive</p>
 
         <div class="tag-input-wrap">
           <input type="text" id="player-tag-input" class="tag-input" maxlength="12" placeholder="ENTER VIPER NAME" value="VIPER">
@@ -629,13 +629,23 @@
           osc.connect(gain); gain.connect(ctx.destination);
           osc.start(now); osc.stop(now + 0.3);
         } else if (type === 'crash') {
-          osc.type = 'square';
-          osc.frequency.setValueAtTime(140, now);
-          osc.frequency.exponentialRampToValueAtTime(30, now + 0.4);
-          gain.gain.setValueAtTime(0.2, now);
-          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(180, now);
+          osc.frequency.exponentialRampToValueAtTime(25, now + 0.45);
+          gain.gain.setValueAtTime(0.35, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
           osc.connect(gain); gain.connect(ctx.destination);
-          osc.start(now); osc.stop(now + 0.4);
+          osc.start(now); osc.stop(now + 0.45);
+
+          const sub = ctx.createOscillator();
+          const subGain = ctx.createGain();
+          sub.type = 'sine';
+          sub.frequency.setValueAtTime(95, now);
+          sub.frequency.exponentialRampToValueAtTime(20, now + 0.4);
+          subGain.gain.setValueAtTime(0.4, now);
+          subGain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+          sub.connect(subGain); subGain.connect(ctx.destination);
+          sub.start(now); sub.stop(now + 0.4);
         }
       } catch(e){}
     }
@@ -702,18 +712,19 @@
       boundaryRing.position.y = 0.2;
       scene.add(boundaryRing);
 
-      // 3D Neon Barrier Wall Cylinder
-      const wallGeo = new THREE.CylinderGeometry(ARENA_RADIUS, ARENA_RADIUS, 22, 96, 1, true);
+      // 3D Neon Barrier Wall Cylinder (Lethal Electric Perimeter)
+      const wallGeo = new THREE.CylinderGeometry(ARENA_RADIUS, ARENA_RADIUS, 28, 96, 1, true);
       const wallMat = new THREE.MeshBasicMaterial({
         color: 0x00f5ff,
         transparent: true,
-        opacity: 0.25,
+        opacity: 0.35,
         side: THREE.DoubleSide
       });
-      const wall = new THREE.Mesh(wallGeo, wallMat);
-      wall.position.y = 11;
-      scene.add(wall);
+      boundaryWall = new THREE.Mesh(wallGeo, wallMat);
+      boundaryWall.position.y = 14;
+      scene.add(boundaryWall);
     }
+    let boundaryWall = null;
     createArenaFloor();
 
     /* ==========================================================================
@@ -745,6 +756,67 @@
     const blackMat = new THREE.MeshBasicMaterial({ color: 0x050505 });
     const goldMat = new THREE.MeshStandardMaterial({ color: 0xffd700, metalness: 0.9, roughness: 0.1, emissive: 0x554400 });
     const shieldMat = new THREE.MeshBasicMaterial({ color: 0x00f5ff, transparent: true, opacity: 0.75, wireframe: true });
+
+    /* ==========================================================================
+       4.1 NEON PARTICLE EXPLOSION SYSTEM (Wall & Self-Collision Blasts)
+       ========================================================================== */
+    const particles = [];
+    const particleGroup = new THREE.Group();
+    scene.add(particleGroup);
+
+    const sparkGeo = new THREE.SphereGeometry(0.4, 6, 6);
+    const sparkMatCache = new Map();
+
+    function getSparkMaterial(colorHex) {
+      const key = String(colorHex);
+      if (!sparkMatCache.has(key)) {
+        sparkMatCache.set(key, new THREE.MeshBasicMaterial({ color: colorHex }));
+      }
+      return sparkMatCache.get(key);
+    }
+
+    function createExplosionSparks(x, z, colorHex = 0x00f5ff, count = 35) {
+      for (let i = 0; i < count; i++) {
+        const mesh = new THREE.Mesh(sparkGeo, getSparkMaterial(colorHex));
+        mesh.position.set(x, 1.2, z);
+        const angle = Math.random() * Math.PI * 2;
+        const speed = 0.6 + Math.random() * 2.2;
+        const vy = 0.4 + Math.random() * 1.6;
+        const p = {
+          mesh,
+          vx: Math.cos(angle) * speed,
+          vy: vy,
+          vz: Math.sin(angle) * speed,
+          life: 0.5 + Math.random() * 0.5,
+          maxLife: 1.0,
+          gravity: -0.05
+        };
+        particleGroup.add(mesh);
+        particles.push(p);
+      }
+    }
+
+    function updateParticles(dt) {
+      for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+        p.life -= dt;
+        p.vy += p.gravity;
+        p.mesh.position.x += p.vx;
+        p.mesh.position.y += p.vy;
+        p.mesh.position.z += p.vz;
+        if (p.mesh.position.y < 0.2) {
+          p.mesh.position.y = 0.2;
+          p.vy = -p.vy * 0.35;
+        }
+        const scale = Math.max(0.01, p.life / p.maxLife);
+        p.mesh.scale.set(scale, scale, scale);
+
+        if (p.life <= 0) {
+          particleGroup.remove(p.mesh);
+          particles.splice(i, 1);
+        }
+      }
+    }
 
     /* ==========================================================================
        5. 3D SNAKE CLASS WITH SNAKE.IO STYLE RELATIVE STEERING & SAFETY
@@ -898,14 +970,22 @@
         this.x += Math.cos(this.angle) * currentSpeed;
         this.z += Math.sin(this.angle) * currentSpeed;
 
-        // Soft Arena Boundary Bounce
+        // Lethal Arena Boundary Wall Collision
         const distFromCenter = Math.hypot(this.x, this.z);
-        if (distFromCenter > ARENA_RADIUS - 6) {
-          const angleToCenter = Math.atan2(-this.z, -this.x);
-          this.targetAngle = angleToCenter;
-          const bounceAmt = (distFromCenter - (ARENA_RADIUS - 6));
-          this.x -= (this.x / distFromCenter) * bounceAmt;
-          this.z -= (this.z / distFromCenter) * bounceAmt;
+        if (distFromCenter >= ARENA_RADIUS - 4) {
+          if (this.invulnerableTimer > 0) {
+            // Soft repel during initial spawn shield
+            const angleToCenter = Math.atan2(-this.z, -this.x);
+            this.targetAngle = angleToCenter;
+            const bounceAmt = (distFromCenter - (ARENA_RADIUS - 4));
+            this.x -= (this.x / distFromCenter) * bounceAmt;
+            this.z -= (this.z / distFromCenter) * bounceAmt;
+          } else {
+            // Lethal Explode!
+            createExplosionSparks(this.x, this.z, 0x00f5ff, 45);
+            this.die('crashed into the electric boundary wall ⚡');
+            return;
+          }
         }
 
         // Record Position
@@ -1018,6 +1098,7 @@
         this.isAlive = false;
 
         playSound('crash', 120);
+        createExplosionSparks(this.x, this.z, this.skin.glow || 0x05ffa1, 40);
 
         // Explode into delicious 3D fruits with STRICT 5-SECOND EXPIRATION!
         // To prevent lag and room freeze, drop consolidated juicy fruits (max 10-12 drops total)
@@ -1354,10 +1435,32 @@
           }
         }
 
-        // 2. Head-on-Body Collision Check (Only between DIFFERENT snakes!)
+        // 2. Self-Collision Check: Cannot touch/bite own body or you explode!
+        if (snake.invulnerableTimer <= 0) {
+          const activeSegs = Math.min(snake.bodyMeshes.length, Math.floor(12 + (snake.mass * 0.18)));
+          // Segments 0..7 are neck/turn radius; check segment 8 onwards
+          for (let s = 8; s < activeSegs; s++) {
+            const histIdx = Math.min(snake.history.length - 1, (s + 1) * 3);
+            const seg = snake.history[histIdx];
+            if (seg) {
+              const hitDist = Math.hypot(snake.x - seg.x, snake.z - seg.z);
+              const taper = 1.0 - (s / activeSegs) * 0.45;
+              const segRadius = Math.max(0.6, snake.baseRadius * taper);
+              const collideRadius = (snake.baseRadius * 1.05) + (segRadius * 0.85);
+              if (hitDist < collideRadius) {
+                createExplosionSparks(snake.x, snake.z, snake.skin.glow || 0x05ffa1, 45);
+                snake.die('bit its own body and exploded 💥');
+                break;
+              }
+            }
+          }
+        }
+        if (!snake.isAlive) continue;
+
+        // 3. Head-on-Body Collision Check (Against OTHER rival snakes)
         if (snake.invulnerableTimer <= 0) {
           for (const rival of allSnakes) {
-            if (rival === snake) continue; // Passing through own body is 100% SAFE!
+            if (rival === snake) continue;
 
             const rivalActiveSegs = Math.min(rival.bodyMeshes.length, Math.floor(12 + (rival.mass * 0.18)));
             for (let s = 0; s < rivalActiveSegs; s += 2) {
@@ -1544,10 +1647,16 @@
         bot.update(deltaTime, foods, [player, ...aiBots]);
       }
 
+      if (boundaryWall) {
+        boundaryWall.material.opacity = 0.28 + Math.sin(now * 0.005) * 0.12;
+      }
+
       if (isGameRunning) {
         checkCollisions();
         updateHUDAndLeaderboard();
       }
+
+      updateParticles(deltaTime);
 
       renderer.render(scene, camera);
     }
