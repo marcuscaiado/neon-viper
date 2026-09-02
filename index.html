@@ -3,225 +3,1488 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>Neon Viper 🐍✨</title>
+  <title>Neon Viper 3D 🐍✨ - Cyber Slither Arena</title>
   <script src="arcade-leaderboard.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <style>
+    :root {
+      --primary: #05ffa1;
+      --secondary: #00f5ff;
+      --accent: #ff007f;
+      --gold: #ffd700;
+      --dark-bg: #070913;
+      --panel-bg: rgba(10, 14, 28, 0.85);
+    }
     * { margin:0; padding:0; box-sizing:border-box; touch-action:none; user-select:none; }
-    body { background:#0a0c16; color:#fff; font-family:'Segoe UI',sans-serif; overflow:hidden; display:flex; justify-content:center; align-items:center; height:100vh; }
-    #canvas-container { position:relative; width:100vw; height:100vh; max-width:800px; }
-    @media (max-width: 600px) { .hud { font-size:16px; } .arcade-nav { font-size:11px; padding:6px 10px; } }
-    canvas { width:100%; height:100%; display:block; background:#0a0c16; }
-    .arcade-nav { position:absolute; top:16px; right:16px; z-index:100; background:rgba(0,0,0,0.7); border:2px solid #05ffa1; color:#05ffa1; padding:8px 16px; border-radius:8px; font-weight:bold; text-decoration:none; font-size:13px; box-shadow:0 0 15px rgba(5,255,161,0.4); }
-    .hud { position:absolute; top:16px; left:16px; font-family:monospace; font-size:20px; font-weight:bold; color:#05ffa1; text-shadow:0 0 10px #05ffa1; pointer-events:none; }
-    #modal { position:absolute; inset:0; background:rgba(0,0,0,0.85); display:none; flex-direction:column; align-items:center; justify-content:center; gap:16px; z-index:200; }
-    #modal h1 { color:#05ffa1; font-size:42px; text-shadow:0 0 20px #05ffa1; }
-    .btn { background:linear-gradient(135deg,#05ffa1,#00f5ff); border:none; color:#000; padding:12px 32px; font-size:18px; font-weight:bold; border-radius:8px; cursor:pointer; text-decoration:none; box-shadow:0 0 20px rgba(5,255,161,0.5); }
-    .boost-hint { position:absolute; bottom:20px; left:50%; transform:translateX(-50%); font-size:14px; color:#aaa; pointer-events:none; }
+    body {
+      background: var(--dark-bg);
+      color: #fff;
+      font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+      overflow: hidden;
+      width: 100vw;
+      height: 100vh;
+      cursor: crosshair;
+    }
+    #game-container {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+    }
+    canvas#webgl-canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    /* Top HUD Header */
+    .hud-header {
+      position: absolute;
+      top: 14px;
+      left: 16px;
+      right: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      pointer-events: none;
+      z-index: 50;
+    }
+    .hud-stats-card {
+      background: var(--panel-bg);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(5, 255, 161, 0.35);
+      border-radius: 12px;
+      padding: 10px 18px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 0 0 15px rgba(5, 255, 161, 0.15);
+      display: flex;
+      gap: 18px;
+      pointer-events: auto;
+    }
+    .stat-box {
+      display: flex;
+      flex-direction: column;
+    }
+    .stat-label {
+      font-size: 10px;
+      letter-spacing: 1px;
+      color: #7b8fa7;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+    .stat-val {
+      font-size: 20px;
+      font-weight: 900;
+      font-family: 'Courier New', monospace;
+      color: var(--primary);
+      text-shadow: 0 0 10px rgba(5, 255, 161, 0.5);
+    }
+    .stat-val.kills { color: var(--accent); text-shadow: 0 0 10px rgba(255, 0, 127, 0.5); }
+    .stat-val.rank { color: var(--gold); text-shadow: 0 0 10px rgba(255, 215, 0, 0.5); }
+
+    /* Action Buttons */
+    .top-actions {
+      display: flex;
+      gap: 10px;
+      pointer-events: auto;
+    }
+    .hud-btn {
+      background: rgba(10, 14, 28, 0.85);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(5, 255, 161, 0.4);
+      color: var(--primary);
+      padding: 8px 14px;
+      border-radius: 10px;
+      font-weight: 700;
+      font-size: 13px;
+      cursor: pointer;
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s ease;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+    }
+    .hud-btn:hover {
+      background: var(--primary);
+      color: #000;
+      box-shadow: 0 0 20px rgba(5, 255, 161, 0.6);
+      transform: translateY(-2px);
+    }
+
+    /* Live Leaderboard Overlay */
+    .leaderboard-overlay {
+      position: absolute;
+      top: 76px;
+      right: 16px;
+      background: var(--panel-bg);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(0, 245, 255, 0.25);
+      border-radius: 12px;
+      padding: 12px 14px;
+      width: 190px;
+      z-index: 50;
+      pointer-events: none;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+    }
+    .lb-title {
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 1.2px;
+      color: var(--secondary);
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+      padding-bottom: 4px;
+    }
+    .lb-list {
+      list-style: none;
+      font-size: 11px;
+      font-family: 'Segoe UI', monospace;
+    }
+    .lb-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 3px 0;
+      color: #cbd5e1;
+    }
+    .lb-item.player {
+      color: var(--primary);
+      font-weight: bold;
+      background: rgba(5, 255, 161, 0.15);
+      border-radius: 4px;
+      padding: 3px 6px;
+      margin: 2px -6px;
+    }
+    .lb-item.crown { color: var(--gold); font-weight: bold; }
+    .lb-name {
+      max-width: 95px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .lb-score { font-weight: 700; }
+
+    /* Minimap */
+    .minimap-container {
+      position: absolute;
+      bottom: 20px;
+      left: 20px;
+      width: 140px;
+      height: 140px;
+      background: rgba(10, 14, 28, 0.85);
+      backdrop-filter: blur(8px);
+      border: 2px solid rgba(5, 255, 161, 0.35);
+      border-radius: 50%;
+      overflow: hidden;
+      z-index: 50;
+      box-shadow: 0 0 20px rgba(0, 0, 0, 0.6), inset 0 0 15px rgba(5, 255, 161, 0.1);
+    }
+    #minimap-canvas {
+      width: 100%;
+      height: 100%;
+    }
+
+    /* Nitro Boost Prompt & Touch Controls */
+    .boost-indicator {
+      position: absolute;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--panel-bg);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 30px;
+      padding: 8px 24px;
+      font-size: 13px;
+      font-weight: 600;
+      color: #94a3b8;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      pointer-events: none;
+      z-index: 50;
+    }
+    .boost-indicator.active {
+      border-color: var(--secondary);
+      color: var(--secondary);
+      box-shadow: 0 0 20px rgba(0, 245, 255, 0.4);
+    }
+
+    /* Mobile Nitro Button */
+    .mobile-boost-btn {
+      position: absolute;
+      bottom: 24px;
+      right: 24px;
+      width: 76px;
+      height: 76px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #00f5ff, #05ffa1);
+      border: 3px solid #fff;
+      color: #000;
+      font-size: 13px;
+      font-weight: 900;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      box-shadow: 0 0 25px rgba(0, 245, 255, 0.6);
+      cursor: pointer;
+      z-index: 60;
+      touch-action: none;
+    }
+    @media (max-width: 768px) {
+      .mobile-boost-btn { display: flex; }
+      .boost-indicator { display: none; }
+      .leaderboard-overlay { width: 140px; font-size: 10px; }
+      .lb-name { max-width: 65px; }
+      .minimap-container { width: 105px; height: 105px; bottom: 16px; left: 16px; }
+    }
+
+    /* Kill Notification Banner */
+    .kill-feed {
+      position: absolute;
+      top: 80px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      pointer-events: none;
+      z-index: 55;
+    }
+    .kill-toast {
+      background: rgba(255, 0, 127, 0.85);
+      color: #fff;
+      font-weight: 800;
+      font-size: 13px;
+      padding: 6px 18px;
+      border-radius: 20px;
+      box-shadow: 0 0 18px rgba(255, 0, 127, 0.6);
+      animation: toastIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards, fadeOut 0.4s ease 2.2s forwards;
+    }
+    @keyframes toastIn { from { transform: scale(0.6) translateY(-10px); opacity: 0; } to { transform: scale(1) translateY(0); opacity: 1; } }
+    @keyframes fadeOut { to { opacity: 0; transform: translateY(-8px); } }
+
+    /* Modals & Overlays */
+    .modal-backdrop {
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at center, rgba(10, 14, 28, 0.88) 0%, rgba(5, 7, 15, 0.97) 100%);
+      backdrop-filter: blur(16px);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      padding: 20px;
+    }
+    .modal-card {
+      background: rgba(15, 22, 42, 0.94);
+      border: 1px solid rgba(5, 255, 161, 0.35);
+      border-radius: 20px;
+      padding: 30px;
+      width: 100%;
+      max-width: 480px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 20px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.8), 0 0 30px rgba(5, 255, 161, 0.2);
+      text-align: center;
+    }
+    .modal-title {
+      font-size: 36px;
+      font-weight: 900;
+      letter-spacing: -0.5px;
+      background: linear-gradient(135deg, #05ffa1, #00f5ff, #ff007f);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      text-shadow: 0 0 30px rgba(5, 255, 161, 0.3);
+    }
+    .modal-subtitle {
+      font-size: 14px;
+      color: #94a3b8;
+      margin-top: -10px;
+    }
+
+    /* Skin Selector */
+    .skin-picker-container {
+      width: 100%;
+      background: rgba(10, 15, 29, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 14px;
+      padding: 14px;
+    }
+    .skin-label {
+      font-size: 12px;
+      font-weight: 700;
+      color: #7dd3fc;
+      text-transform: uppercase;
+      margin-bottom: 10px;
+      display: flex;
+      justify-content: space-between;
+    }
+    .skins-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+    }
+    .skin-card {
+      background: rgba(255, 255, 255, 0.04);
+      border: 2px solid transparent;
+      border-radius: 10px;
+      padding: 8px 4px;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      transition: all 0.2s ease;
+    }
+    .skin-card:hover { background: rgba(255, 255, 255, 0.08); transform: translateY(-2px); }
+    .skin-card.active {
+      border-color: var(--primary);
+      background: rgba(5, 255, 161, 0.15);
+      box-shadow: 0 0 15px rgba(5, 255, 161, 0.3);
+    }
+    .skin-swatch {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      box-shadow: 0 0 10px currentColor;
+    }
+    .skin-name {
+      font-size: 10px;
+      font-weight: 700;
+      color: #e2e8f0;
+    }
+
+    /* Tag Input */
+    .tag-input-wrap {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      width: 100%;
+    }
+    .tag-input {
+      flex: 1;
+      background: rgba(0, 0, 0, 0.4);
+      border: 1px solid rgba(5, 255, 161, 0.3);
+      border-radius: 10px;
+      padding: 10px 14px;
+      color: #fff;
+      font-size: 15px;
+      font-weight: bold;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      text-align: center;
+      outline: none;
+    }
+    .tag-input:focus {
+      border-color: var(--secondary);
+      box-shadow: 0 0 15px rgba(0, 245, 255, 0.3);
+    }
+
+    /* Primary Action Buttons */
+    .btn-main {
+      width: 100%;
+      background: linear-gradient(135deg, #05ffa1 0%, #00f5ff 100%);
+      border: none;
+      border-radius: 12px;
+      padding: 14px 20px;
+      font-size: 17px;
+      font-weight: 900;
+      color: #031018;
+      cursor: pointer;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      box-shadow: 0 0 25px rgba(5, 255, 161, 0.5);
+      transition: all 0.2s ease;
+    }
+    .btn-main:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 0 35px rgba(5, 255, 161, 0.8);
+    }
+    .btn-secondary {
+      background: transparent;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: #94a3b8;
+      padding: 10px 18px;
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s ease;
+    }
+    .btn-secondary:hover {
+      border-color: #fff;
+      color: #fff;
+    }
   </style>
 </head>
 <body>
-  <div id="canvas-container">
-    <a href="https://marcuscaiado.github.io/marcus-arcade/" class="arcade-nav">🕹️ Arcade Hub</a>
-    <div class="hud">LENGTH: <span id="len-val">15</span> | ORBS: <span id="score-val">0</span></div>
-    <div class="boost-hint">Hold Touch / Left-Click for NITRO BOOST ⚡</div>
-    <canvas id="gameCanvas" width="800" height="600"></canvas>
-    <div id="modal">
-      <h1>VIPER CRASHED! 💥</h1>
-      <p style="font-size:20px;">FINAL SCORE: <span id="final-score">0</span></p>
-      <button class="btn" onclick="restartGame()">RESPAWN VIPER 🔄</button>
-      <a href="https://marcuscaiado.github.io/marcus-arcade/" class="btn" style="background:#222; color:#fff; border:1px solid #05ffa1;">ARCADE HUB 🕹️</a>
+  <div id="game-container">
+    <canvas id="webgl-canvas"></canvas>
+
+    <!-- Top HUD Header -->
+    <div class="hud-header">
+      <div class="hud-stats-card">
+        <div class="stat-box">
+          <span class="stat-label">Mass</span>
+          <span class="stat-val" id="hud-mass">160</span>
+        </div>
+        <div class="stat-box">
+          <span class="stat-label">Length</span>
+          <span class="stat-val" id="hud-len">20</span>
+        </div>
+        <div class="stat-box">
+          <span class="stat-label">Kills</span>
+          <span class="stat-val kills" id="hud-kills">0</span>
+        </div>
+        <div class="stat-box">
+          <span class="stat-label">Rank</span>
+          <span class="stat-val rank" id="hud-rank">#10</span>
+        </div>
+      </div>
+
+      <div class="top-actions">
+        <button class="hud-btn" id="skins-btn" onclick="openSkinsModal()">🎨 Skins</button>
+        <a href="https://marcuscaiado.github.io/marcus-arcade/" class="hud-btn">🕹️ Arcade</a>
+      </div>
+    </div>
+
+    <!-- Live Leaderboard -->
+    <div class="leaderboard-overlay">
+      <div class="lb-title">
+        <span>ARENA TOP 10</span>
+        <span style="color:var(--primary); font-size:9px;">LIVE</span>
+      </div>
+      <ul class="lb-list" id="lb-list">
+        <!-- Rendered dynamically -->
+      </ul>
+    </div>
+
+    <!-- Minimap Radar -->
+    <div class="minimap-container">
+      <canvas id="minimap-canvas" width="140" height="140"></canvas>
+    </div>
+
+    <!-- Nitro Indicator / Hints -->
+    <div class="boost-indicator" id="boost-hint">
+      ⚡ Move mouse away from center to steer &bull; Hold <b style="color:#fff;">CLICK</b> or <b style="color:#fff;">SPACE</b> for NITRO
+    </div>
+
+    <!-- Mobile Boost Button -->
+    <div class="mobile-boost-btn" id="mobile-boost">
+      NITRO<br>BOOST ⚡
+    </div>
+
+    <!-- Kill Feed Banner -->
+    <div class="kill-feed" id="kill-feed"></div>
+
+    <!-- Welcome / Skin Selection Modal -->
+    <div class="modal-backdrop" id="start-modal">
+      <div class="modal-card">
+        <h1 class="modal-title">NEON VIPER 3D</h1>
+        <p class="modal-subtitle">Fast-Paced 3D Slither Arena &bull; Cut Off Rivals &bull; Grow Massive</p>
+
+        <div class="tag-input-wrap">
+          <input type="text" id="player-tag-input" class="tag-input" maxlength="12" placeholder="ENTER VIPER NAME" value="VIPER">
+        </div>
+
+        <div class="skin-picker-container">
+          <div class="skin-label">
+            <span>SELECT 3D SKIN</span>
+            <span id="selected-skin-name" style="color:var(--primary)">NEON VIPER</span>
+          </div>
+          <div class="skins-grid" id="skins-grid">
+            <!-- Populated via JS -->
+          </div>
+        </div>
+
+        <button class="btn-main" onclick="startGame()">ENTER 3D ARENA 🐍</button>
+        <a href="https://marcuscaiado.github.io/marcus-arcade/" class="btn-secondary">🕹️ BACK TO MARCUS ARCADE</a>
+      </div>
+    </div>
+
+    <!-- Game Over Modal -->
+    <div class="modal-backdrop" id="gameover-modal" style="display:none;">
+      <div class="modal-card">
+        <h1 class="modal-title" style="background:linear-gradient(135deg,#ff007f,#ff4b4b);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">VIPER CRASHED! 💥</h1>
+        <p class="modal-subtitle" id="death-reason">You collided with a rival cyber serpent</p>
+
+        <div style="display:flex; justify-content:space-around; width:100%; background:rgba(0,0,0,0.4); padding:14px; border-radius:12px; border:1px solid rgba(255,255,255,0.1);">
+          <div class="stat-box">
+            <span class="stat-label">Final Mass</span>
+            <span class="stat-val" id="final-mass">0</span>
+          </div>
+          <div class="stat-box">
+            <span class="stat-label">Total Kills</span>
+            <span class="stat-val kills" id="final-kills">0</span>
+          </div>
+          <div class="stat-box">
+            <span class="stat-label">Peak Rank</span>
+            <span class="stat-val rank" id="final-rank">#1</span>
+          </div>
+        </div>
+
+        <button class="btn-main" onclick="respawnPlayer()">RESPAWN VIPER 🔄</button>
+        <div style="display:flex; gap:10px; width:100%;">
+          <button class="btn-secondary" style="flex:1; justify-content:center;" onclick="openSkinsModal()">CHANGE SKIN 🎨</button>
+          <a href="https://marcuscaiado.github.io/marcus-arcade/" class="btn-secondary" style="flex:1; justify-content:center;">ARCADE HUB 🕹️</a>
+        </div>
+      </div>
     </div>
   </div>
 
   <script>
-    const canvas = document.getElementById('gameCanvas');
-    const ctx = canvas.getContext('2d');
+    /* ==========================================================================
+       1. SKINS & CUSTOMIZATION CONFIGURATION
+       ========================================================================== */
+    const SKINS = [
+      { id: 'neon', name: 'Neon Viper', color: '#05ffa1', headColor: '#00f5ff', secondary: '#05ffa1', eyeColor: '#ffffff', glow: 0x05ffa1 },
+      { id: 'mecha', name: 'Mecha Dragon', color: '#ff7700', headColor: '#ffd700', secondary: '#ff2200', eyeColor: '#00ffff', glow: 0xff7700 },
+      { id: 'void', name: 'Cosmic Void', color: '#b967ff', headColor: '#e0aaff', secondary: '#7928ca', eyeColor: '#00ffcc', glow: 0xb967ff },
+      { id: 'rainbow', name: 'Hyper Rainbow', color: '#ff007f', headColor: '#ffffff', secondary: '#00f5ff', eyeColor: '#ffff00', isRainbow: true, glow: 0x00f5ff },
+      { id: 'magma', name: 'Molten Magma', color: '#ff3b30', headColor: '#ff9500', secondary: '#ffcc00', eyeColor: '#ffffff', glow: 0xff3b30 },
+      { id: 'sakura', name: 'Sakura Glaze', color: '#ff758c', headColor: '#ff7eb3', secondary: '#70a6ff', eyeColor: '#ffffff', glow: 0xff758c },
+      { id: 'gold', name: 'Golden King', color: '#ffd700', headColor: '#fff275', secondary: '#b38728', eyeColor: '#ffffff', hasCrown: true, glow: 0xffd700 },
+      { id: 'matrix', name: 'Matrix Cyber', color: '#00ff41', headColor: '#50ff7f', secondary: '#008f11', eyeColor: '#ffffff', glow: 0x00ff41 }
+    ];
 
-    // Audio
+    let currentSkinId = localStorage.getItem('neon_viper_skin') || 'neon';
+    let playerName = localStorage.getItem('neon_viper_name') || (window.ArcadeLeaderboard ? window.ArcadeLeaderboard.getPlayerTag() : 'VIPER');
+
+    /* ==========================================================================
+       2. AUDIO SYNTHESIS ENGINE
+       ========================================================================== */
     let audioCtx = null;
-    function getAudio() { if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); return audioCtx; }
-    function playChime(freq, dur) {
+    function getAudio() {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      return audioCtx;
+    }
+
+    function playSound(type, freq = 440) {
       try {
-        const c = getAudio(); const osc = c.createOscillator(); const g = c.createGain();
-        osc.frequency.value = freq; g.gain.setValueAtTime(0.1, c.currentTime);
-        g.gain.exponentialRampToValueAtTime(0.01, c.currentTime + dur);
-        osc.connect(g); g.connect(c.destination); osc.start(); osc.stop(c.currentTime + dur);
+        const ctx = getAudio();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        const now = ctx.currentTime;
+
+        if (type === 'eat') {
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(freq, now);
+          osc.frequency.exponentialRampToValueAtTime(freq * 1.5, now + 0.08);
+          gain.gain.setValueAtTime(0.08, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+          osc.connect(gain); gain.connect(ctx.destination);
+          osc.start(now); osc.stop(now + 0.08);
+        } else if (type === 'super_eat') {
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(freq, now);
+          osc.frequency.exponentialRampToValueAtTime(freq * 2.2, now + 0.18);
+          gain.gain.setValueAtTime(0.12, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+          osc.connect(gain); gain.connect(ctx.destination);
+          osc.start(now); osc.stop(now + 0.18);
+        } else if (type === 'kill') {
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(300, now);
+          osc.frequency.linearRampToValueAtTime(800, now + 0.25);
+          gain.gain.setValueAtTime(0.15, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+          osc.connect(gain); gain.connect(ctx.destination);
+          osc.start(now); osc.stop(now + 0.3);
+        } else if (type === 'crash') {
+          osc.type = 'square';
+          osc.frequency.setValueAtTime(140, now);
+          osc.frequency.exponentialRampToValueAtTime(30, now + 0.4);
+          gain.gain.setValueAtTime(0.2, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+          osc.connect(gain); gain.connect(ctx.destination);
+          osc.start(now); osc.stop(now + 0.4);
+        }
       } catch(e){}
     }
 
-    let isGameOver = false, score = 0, waitingToStart = true;
-    let targetAngle = 0, currentAngle = 0;
-    let isBoosting = false;
+    /* ==========================================================================
+       3. THREE.JS 3D SCENE & ENGINE SETUP
+       ========================================================================== */
+    const ARENA_RADIUS = 300;
+    const canvas = document.getElementById('webgl-canvas');
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false, powerPreference: 'high-performance' });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.15;
 
-    // Snake Body Segments
-    let snake = [];
-    const initialLen = 18;
-    for (let i = 0; i < initialLen; i++) {
-      snake.push({ x: 400 - i * 6, y: 300 });
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x060814);
+    scene.fog = new THREE.FogExp2(0x060814, 0.0025);
+
+    const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 1, 1200);
+    camera.position.set(0, 110, 85);
+    camera.lookAt(0, 0, 0);
+
+    // Lighting
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+    scene.add(ambientLight);
+
+    const dirLight = new THREE.DirectionalLight(0xa5f3fc, 0.9);
+    dirLight.position.set(100, 200, 80);
+    scene.add(dirLight);
+
+    const underGlow = new THREE.DirectionalLight(0x05ffa1, 0.4);
+    underGlow.position.set(-100, -50, -80);
+    scene.add(underGlow);
+
+    // Arena Floor & Grid
+    function createArenaFloor() {
+      const floorGeo = new THREE.CircleGeometry(ARENA_RADIUS, 64);
+      const floorMat = new THREE.MeshStandardMaterial({
+        color: 0x090e23,
+        roughness: 0.35,
+        metalness: 0.8
+      });
+      const floor = new THREE.Mesh(floorGeo, floorMat);
+      floor.rotation.x = -Math.PI / 2;
+      floor.position.y = -0.1;
+      scene.add(floor);
+
+      // Grid Lines
+      const gridHelper = new THREE.PolarGridHelper(ARENA_RADIUS, 20, 64, 64, 0x05ffa1, 0x112347);
+      gridHelper.position.y = 0.05;
+      gridHelper.material.opacity = 0.4;
+      gridHelper.material.transparent = true;
+      scene.add(gridHelper);
+
+      // Boundary Ring
+      const ringGeo = new THREE.RingGeometry(ARENA_RADIUS - 2, ARENA_RADIUS + 3, 96);
+      const ringMat = new THREE.MeshBasicMaterial({ color: 0x05ffa1, side: THREE.DoubleSide });
+      const boundaryRing = new THREE.Mesh(ringGeo, ringMat);
+      boundaryRing.rotation.x = -Math.PI / 2;
+      boundaryRing.position.y = 0.2;
+      scene.add(boundaryRing);
+
+      // 3D Neon Barrier Wall Cylinder
+      const wallGeo = new THREE.CylinderGeometry(ARENA_RADIUS, ARENA_RADIUS, 22, 96, 1, true);
+      const wallMat = new THREE.MeshBasicMaterial({
+        color: 0x00f5ff,
+        transparent: true,
+        opacity: 0.25,
+        side: THREE.DoubleSide
+      });
+      const wall = new THREE.Mesh(wallGeo, wallMat);
+      wall.position.y = 11;
+      scene.add(wall);
+    }
+    createArenaFloor();
+
+    /* ==========================================================================
+       4. SHARED 3D MESH GEOMETRIES & MATERIALS POOL
+       ========================================================================== */
+    const sphereGeo = new THREE.SphereGeometry(1, 16, 16);
+    const eyeGeo = new THREE.SphereGeometry(0.35, 12, 12);
+    const pupilGeo = new THREE.SphereGeometry(0.18, 12, 12);
+    const crownGeo = new THREE.ConeGeometry(0.8, 1.2, 5);
+    const shieldRingGeo = new THREE.TorusGeometry(2.5, 0.15, 8, 32);
+
+    const materialsCache = new Map();
+    function getSkinMaterial(colorHex, emissiveHex, isShiny = true) {
+      const key = `${colorHex}_${emissiveHex}_${isShiny}`;
+      if (!materialsCache.has(key)) {
+        const mat = new THREE.MeshStandardMaterial({
+          color: new THREE.Color(colorHex),
+          emissive: new THREE.Color(emissiveHex || 0x000000),
+          emissiveIntensity: 0.4,
+          roughness: isShiny ? 0.2 : 0.6,
+          metalness: isShiny ? 0.5 : 0.1
+        });
+        materialsCache.set(key, mat);
+      }
+      return materialsCache.get(key);
     }
 
-    // Food Orbs
-    let foods = [];
-    for (let i = 0; i < 35; i++) spawnFood();
+    const whiteMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+    const blackMat = new THREE.MeshBasicMaterial({ color: 0x050505 });
+    const goldMat = new THREE.MeshStandardMaterial({ color: 0xffd700, metalness: 0.9, roughness: 0.1, emissive: 0x554400 });
+    const shieldMat = new THREE.MeshBasicMaterial({ color: 0x00f5ff, transparent: true, opacity: 0.75, wireframe: true });
 
-    function spawnFood() {
+    /* ==========================================================================
+       5. 3D SNAKE CLASS WITH SNAKE.IO STYLE RELATIVE STEERING & SAFETY
+       ========================================================================== */
+    class Snake3D {
+      constructor(name, skin, isPlayer = false, startX = 0, startZ = 0) {
+        this.name = name;
+        this.skin = skin;
+        this.isPlayer = isPlayer;
+        this.isAlive = true;
+        this.kills = 0;
+
+        // Position & Angle
+        this.x = startX;
+        this.z = startZ;
+        this.angle = Math.random() * Math.PI * 2;
+        this.targetAngle = this.angle;
+        this.speed = 1.35;
+        this.isBoosting = false;
+
+        // Spawn Invulnerability Shield (3.5s protection)
+        this.invulnerableTimer = isPlayer ? 3.5 : 1.5;
+
+        // Snake Body Data
+        this.initialLength = 20;
+        this.mass = 160;
+        this.baseRadius = 1.6;
+
+        // Path history
+        this.history = [];
+        for (let i = 0; i < 400; i++) {
+          this.history.push({
+            x: startX - Math.cos(this.angle) * (i * 0.4),
+            z: startZ - Math.sin(this.angle) * (i * 0.4)
+          });
+        }
+
+        // 3D Scene Container
+        this.group = new THREE.Group();
+        scene.add(this.group);
+
+        // Head Mesh
+        this.headMesh = new THREE.Group();
+        const headSphere = new THREE.Mesh(sphereGeo, getSkinMaterial(skin.headColor, skin.glow, true));
+        headSphere.scale.set(this.baseRadius * 1.25, this.baseRadius * 1.1, this.baseRadius * 1.35);
+        this.headMesh.add(headSphere);
+
+        // Eyes
+        this.leftEye = new THREE.Mesh(eyeGeo, whiteMat);
+        this.leftEye.position.set(-0.8, 0.6, 0.9);
+        this.leftPupil = new THREE.Mesh(pupilGeo, blackMat);
+        this.leftPupil.position.set(0, 0, 0.22);
+        this.leftEye.add(this.leftPupil);
+        this.headMesh.add(this.leftEye);
+
+        this.rightEye = new THREE.Mesh(eyeGeo, whiteMat);
+        this.rightEye.position.set(0.8, 0.6, 0.9);
+        this.rightPupil = new THREE.Mesh(pupilGeo, blackMat);
+        this.rightPupil.position.set(0, 0, 0.22);
+        this.rightEye.add(this.rightPupil);
+        this.headMesh.add(this.rightEye);
+
+        // Crown
+        this.crown = new THREE.Mesh(crownGeo, goldMat);
+        this.crown.position.set(0, 2.5, 0);
+        this.crown.rotation.x = Math.PI;
+        this.crown.visible = !!skin.hasCrown;
+        this.headMesh.add(this.crown);
+
+        // Spawn Shield Mesh
+        this.shieldMesh = new THREE.Mesh(shieldRingGeo, shieldMat);
+        this.shieldMesh.rotation.x = Math.PI / 2;
+        this.shieldMesh.position.y = 0.5;
+        this.shieldMesh.visible = this.invulnerableTimer > 0;
+        this.headMesh.add(this.shieldMesh);
+
+        this.group.add(this.headMesh);
+
+        // Body Meshes Pool
+        this.bodyMeshes = [];
+        this.maxMeshes = 200;
+        for (let i = 0; i < this.maxMeshes; i++) {
+          const isEven = i % 2 === 0;
+          const colorHex = isEven ? skin.color : skin.secondary;
+          const mat = getSkinMaterial(colorHex, skin.glow, true);
+          const mesh = new THREE.Mesh(sphereGeo, mat);
+          mesh.visible = false;
+          this.group.add(mesh);
+          this.bodyMeshes.push(mesh);
+        }
+
+        // AI specific
+        this.aiDecisionTimer = Math.random() * 60;
+        this.aiTargetFood = null;
+      }
+
+      setCrown(show) {
+        this.crown.visible = show || !!this.skin.hasCrown;
+      }
+
+      updateSkin(newSkin) {
+        this.skin = newSkin;
+        this.headMesh.children[0].material = getSkinMaterial(newSkin.headColor, newSkin.glow, true);
+        for (let i = 0; i < this.bodyMeshes.length; i++) {
+          const isEven = i % 2 === 0;
+          const colorHex = isEven ? newSkin.color : newSkin.secondary;
+          this.bodyMeshes[i].material = getSkinMaterial(colorHex, newSkin.glow, true);
+        }
+      }
+
+      update(deltaTime, foods, otherSnakes) {
+        if (!this.isAlive) return;
+
+        // Update Invulnerability Shield
+        if (this.invulnerableTimer > 0) {
+          this.invulnerableTimer -= deltaTime;
+          this.shieldMesh.visible = true;
+          this.shieldMesh.rotation.z += 0.05;
+        } else {
+          this.shieldMesh.visible = false;
+        }
+
+        // AI Steering
+        if (!this.isPlayer) {
+          this.updateAI(foods, otherSnakes);
+        }
+
+        // =========================================================================
+        // SNAKE.IO STYLE SMOOTH ANGULAR TURN RATE LIMIT
+        // =========================================================================
+        let diff = this.targetAngle - this.angle;
+        while (diff < -Math.PI) diff += Math.PI * 2;
+        while (diff > Math.PI) diff -= Math.PI * 2;
+
+        // Controlled turn rate: snake turns in smooth arcs, never instantly 180s
+        const maxTurnRate = this.isBoosting ? 0.10 : 0.08;
+        const turnStep = Math.sign(diff) * Math.min(Math.abs(diff), maxTurnRate);
+        this.angle += turnStep;
+
+        // Speed & Nitro
+        const currentSpeed = (this.isBoosting && this.mass > 40) ? this.speed * 1.85 : this.speed;
+        if (this.isBoosting && this.mass > 40 && Math.random() < 0.2) {
+          this.mass -= 0.5;
+          if (this.history.length > 20 && Math.random() < 0.35) {
+            const tailPt = this.history[Math.min(this.history.length - 1, 30)];
+            spawnFoodOrb(tailPt.x + (Math.random()-0.5)*2, tailPt.z + (Math.random()-0.5)*2, 0.9, this.skin.color, false);
+          }
+        }
+
+        // Move Forward
+        this.x += Math.cos(this.angle) * currentSpeed;
+        this.z += Math.sin(this.angle) * currentSpeed;
+
+        // Soft Arena Boundary Bounce
+        const distFromCenter = Math.hypot(this.x, this.z);
+        if (distFromCenter > ARENA_RADIUS - 6) {
+          const angleToCenter = Math.atan2(-this.z, -this.x);
+          this.targetAngle = angleToCenter;
+          const bounceAmt = (distFromCenter - (ARENA_RADIUS - 6));
+          this.x -= (this.x / distFromCenter) * bounceAmt;
+          this.z -= (this.z / distFromCenter) * bounceAmt;
+        }
+
+        // Record Position
+        this.history.unshift({ x: this.x, z: this.z });
+        if (this.history.length > 700) this.history.pop();
+
+        // Update Head 3D Mesh
+        this.headMesh.position.set(this.x, this.baseRadius * 0.85, this.z);
+        this.headMesh.rotation.y = -this.angle - Math.PI / 2;
+        if (this.crown.visible) {
+          this.crown.rotation.y += 0.03;
+        }
+
+        // Update Body Segments
+        const activeSegments = Math.min(this.maxMeshes, Math.floor(12 + (this.mass * 0.18)));
+        const historyStep = 3;
+
+        for (let i = 0; i < this.bodyMeshes.length; i++) {
+          const mesh = this.bodyMeshes[i];
+          if (i < activeSegments) {
+            const histIdx = Math.min(this.history.length - 1, (i + 1) * historyStep);
+            const pt = this.history[histIdx];
+            if (pt) {
+              mesh.visible = true;
+              const taper = 1.0 - (i / activeSegments) * 0.45;
+              const segRadius = Math.max(0.6, this.baseRadius * taper);
+              mesh.scale.set(segRadius, segRadius * 0.95, segRadius);
+              mesh.position.set(pt.x, segRadius * 0.85, pt.z);
+
+              if (this.skin.isRainbow) {
+                const hue = (Date.now() * 0.002 + i * 0.08) % 1;
+                mesh.material.color.setHSL(hue, 1.0, 0.55);
+              }
+            }
+          } else {
+            mesh.visible = false;
+          }
+        }
+      }
+
+      updateAI(foods, otherSnakes) {
+        this.aiDecisionTimer--;
+
+        // Look Ahead for Obstacles
+        const lookAheadDist = this.isBoosting ? 26 : 16;
+        const forwardX = this.x + Math.cos(this.angle) * lookAheadDist;
+        const forwardZ = this.z + Math.sin(this.angle) * lookAheadDist;
+
+        // Boundary Avoidance
+        if (Math.hypot(forwardX, forwardZ) > ARENA_RADIUS - 20) {
+          this.targetAngle = Math.atan2(-this.z, -this.x) + (Math.random() - 0.5) * 0.8;
+          this.isBoosting = false;
+          return;
+        }
+
+        // Snake Body Avoidance (Only avoid other snakes' bodies)
+        for (const other of otherSnakes) {
+          if (!other.isAlive || other === this) continue;
+
+          const activeSegments = Math.min(other.bodyMeshes.length, Math.floor(12 + (other.mass * 0.18)));
+          for (let i = 0; i < activeSegments; i += 3) {
+            const histIdx = Math.min(other.history.length - 1, (i + 1) * 3);
+            const seg = other.history[histIdx];
+            if (seg && Math.hypot(forwardX - seg.x, forwardZ - seg.z) < 14) {
+              this.targetAngle = this.angle + (Math.random() > 0.5 ? 1.6 : -1.6);
+              this.isBoosting = false;
+              return;
+            }
+          }
+
+          // Aggressive Cut-off: If nearby snake is smaller, dash ahead
+          if (this.mass > other.mass * 1.2 && Math.hypot(this.x - other.x, this.z - other.z) < 40) {
+            const interceptX = other.x + Math.cos(other.angle) * 14;
+            const interceptZ = other.z + Math.sin(other.angle) * 14;
+            this.targetAngle = Math.atan2(interceptZ - this.z, interceptX - this.x);
+            this.isBoosting = Math.random() < 0.6;
+            return;
+          }
+        }
+
+        // Hunt Food
+        if (this.aiDecisionTimer <= 0 || !this.aiTargetFood) {
+          this.aiDecisionTimer = 40 + Math.random() * 40;
+          this.isBoosting = Math.random() < 0.1;
+
+          let bestDist = Infinity;
+          let bestFood = null;
+
+          for (let i = 0; i < foods.length; i += 2) {
+            const f = foods[i];
+            const d = Math.hypot(f.x - this.x, f.z - this.z);
+            const weight = f.isSuper ? d * 0.5 : d;
+            if (weight < bestDist) {
+              bestDist = weight;
+              bestFood = f;
+            }
+          }
+
+          if (bestFood) {
+            this.aiTargetFood = bestFood;
+            this.targetAngle = Math.atan2(bestFood.z - this.z, bestFood.x - this.x);
+          } else {
+            this.targetAngle += (Math.random() - 0.5) * 1.0;
+          }
+        }
+      }
+
+      die(reason = 'crashed into another viper') {
+        if (!this.isAlive || this.invulnerableTimer > 0) return;
+        this.isAlive = false;
+
+        playSound('crash', 120);
+
+        // Explode into energy orbs
+        const activeSegments = Math.min(this.bodyMeshes.length, Math.floor(12 + (this.mass * 0.18)));
+        for (let i = 0; i < activeSegments; i++) {
+          const histIdx = Math.min(this.history.length - 1, (i + 1) * 3);
+          const pt = this.history[histIdx];
+          if (pt) {
+            const orbColor = i % 2 === 0 ? this.skin.color : this.skin.secondary;
+            spawnFoodOrb(
+              pt.x + (Math.random() - 0.5) * 4,
+              pt.z + (Math.random() - 0.5) * 4,
+              1.6 + Math.random() * 1.2,
+              orbColor,
+              true
+            );
+          }
+        }
+
+        this.headMesh.visible = false;
+        for (const m of this.bodyMeshes) m.visible = false;
+
+        if (this.isPlayer) {
+          onPlayerDied(reason);
+        }
+      }
+
+      destroy() {
+        scene.remove(this.group);
+      }
+    }
+
+    /* ==========================================================================
+       6. 3D FOOD ORBS
+       ========================================================================== */
+    const foods = [];
+    const foodGroup = new THREE.Group();
+    scene.add(foodGroup);
+
+    const foodGeo = new THREE.DodecahedronGeometry(1, 1);
+    const superFoodGeo = new THREE.IcosahedronGeometry(1.6, 2);
+
+    function spawnFoodOrb(x, z, radius = 1.0, color = null, isSuper = false) {
+      if (!color) {
+        const palette = ['#00f5ff', '#ff007f', '#ffff00', '#05ffa1', '#b967ff', '#ff8800'];
+        color = palette[Math.floor(Math.random() * palette.length)];
+      }
+
+      const mat = new THREE.MeshStandardMaterial({
+        color: new THREE.Color(color),
+        emissive: new THREE.Color(color),
+        emissiveIntensity: isSuper ? 0.8 : 0.45,
+        roughness: 0.2,
+        metalness: 0.3
+      });
+
+      const mesh = new THREE.Mesh(isSuper ? superFoodGeo : foodGeo, mat);
+      mesh.position.set(x, 1.2, z);
+      mesh.scale.set(radius, radius, radius);
+      foodGroup.add(mesh);
+
       foods.push({
-        x: 30 + Math.random() * 740,
-        y: 30 + Math.random() * 540,
-        r: 4 + Math.random() * 4,
-        color: ['#00f5ff', '#ff007f', '#ffff00', '#05ffa1', '#b967ff'][Math.floor(Math.random() * 5)]
+        mesh,
+        x,
+        z,
+        radius,
+        color,
+        isSuper,
+        bobOffset: Math.random() * Math.PI * 2,
+        rotSpeed: 0.02 + Math.random() * 0.03
       });
     }
 
-    // Controls
-    const setSteerPos = (cx, cy) => {
-      const rect = canvas.getBoundingClientRect();
-      const mx = ((cx - rect.left) / rect.width) * 800;
-      const my = ((cy - rect.top) / rect.height) * 600;
-      const head = snake[0];
-      targetAngle = Math.atan2(my - head.y, mx - head.x);
-    };
-
-    window.addEventListener('mousemove', e => setSteerPos(e.clientX, e.clientY));
-    window.addEventListener('mousedown', () => { if (waitingToStart) { waitingToStart = false; } isBoosting = true; });
-    window.addEventListener('mouseup', () => isBoosting = false);
-
-    window.addEventListener('touchmove', e => { e.preventDefault(); setSteerPos(e.touches[0].clientX, e.touches[0].clientY); }, { passive:false });
-    window.addEventListener('touchstart', e => { e.preventDefault(); if (waitingToStart) { waitingToStart = false; } isBoosting = true; setSteerPos(e.touches[0].clientX, e.touches[0].clientY); }, { passive:false });
-    window.addEventListener('touchend', e => { isBoosting = false; });
-
-    function restartGame() {
-      snake = [];
-      for (let i = 0; i < initialLen; i++) snake.push({ x: 400 - i * 6, y: 300 });
-      score = 0; isGameOver = false; targetAngle = 0; currentAngle = 0;
-      document.getElementById('modal').style.display = 'none';
-      requestAnimationFrame(loop);
+    for (let i = 0; i < 280; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const dist = Math.sqrt(Math.random()) * (ARENA_RADIUS - 20);
+      spawnFoodOrb(Math.cos(angle) * dist, Math.sin(angle) * dist, 0.8 + Math.random() * 0.6, null, Math.random() < 0.12);
     }
 
-    function loop() {
-      if (isGameOver) return;
+    /* ==========================================================================
+       7. GAME STATE & BOT MANAGEMENT
+       ========================================================================== */
+    let player = null;
+    const aiBots = [];
+    let isGameRunning = false;
+    let peakRank = 10;
 
-      // Wait for user input before starting
-      if (waitingToStart) {
-        ctx.fillStyle = '#0a0c16'; ctx.fillRect(0, 0, 800, 600);
-        // Draw arena border
-        ctx.strokeStyle = '#05ffa1'; ctx.lineWidth = 4; ctx.shadowColor = '#05ffa1'; ctx.shadowBlur = 15;
-        ctx.strokeRect(10, 10, 780, 580); ctx.shadowBlur = 0;
-        // Draw idle snake
-        for (let i = snake.length - 1; i >= 0; i--) {
-          const seg = snake[i]; const p = 1 - i / snake.length; const rad = 6 + p * 6;
-          ctx.fillStyle = i === 0 ? '#ffffff' : (i % 2 === 0 ? '#05ffa1' : '#00f5ff');
-          ctx.beginPath(); ctx.arc(seg.x, seg.y, rad, 0, Math.PI * 2); ctx.fill();
-        }
-        // Draw foods
-        for (const f of foods) { ctx.fillStyle = f.color; ctx.beginPath(); ctx.arc(f.x, f.y, f.r, 0, Math.PI * 2); ctx.fill(); }
-        ctx.fillStyle = '#05ffa1'; ctx.font = 'bold 24px Segoe UI'; ctx.textAlign = 'center';
-        ctx.fillText('MOVE MOUSE / TOUCH TO START', 400, 300);
-        ctx.font = '14px Segoe UI'; ctx.fillStyle = '#aaa';
-        ctx.fillText('Hold click/touch for nitro boost', 400, 330);
-        requestAnimationFrame(loop); return;
+    const BOT_NAMES = [
+      'TITAN_X', 'CYBER_GHOST', 'SHADOW_FANG', 'NEXUS_9', 'ZERO_COOL',
+      'PIXEL_BEAST', 'KRAKEN', 'GLITCH_VIPER', 'AURORA', 'VORTEX',
+      'HYPER_PULSE', 'ECLIPSE', 'BLAZE_RUNNER'
+    ];
+
+    function spawnAIBot() {
+      const botName = BOT_NAMES[Math.floor(Math.random() * BOT_NAMES.length)];
+      const skin = SKINS[Math.floor(Math.random() * SKINS.length)];
+      
+      // Spawn far away from player so no spawn kill occurs!
+      let spawnX = 0, spawnZ = 0;
+      for (let attempt = 0; attempt < 10; attempt++) {
+        const angle = Math.random() * Math.PI * 2;
+        const dist = 60 + Math.random() * (ARENA_RADIUS - 100);
+        spawnX = Math.cos(angle) * dist;
+        spawnZ = Math.sin(angle) * dist;
+        if (!player || Math.hypot(spawnX - player.x, spawnZ - player.z) > 75) break;
       }
 
-      // Smooth Rotation Lerp
-      let diff = targetAngle - currentAngle;
-      while (diff < -Math.PI) diff += Math.PI * 2;
-      while (diff > Math.PI) diff -= Math.PI * 2;
-      currentAngle += diff * 0.12;
+      const bot = new Snake3D(botName, skin, false, spawnX, spawnZ);
+      bot.mass = 80 + Math.random() * 260;
+      aiBots.push(bot);
+    }
 
-      // Speed
-      const speed = isBoosting && snake.length > 8 ? 6.5 : 3.5;
-      if (isBoosting && snake.length > 8 && Math.random() < 0.05) {
-        snake.pop(); // Burn tail for boost
+    function initArena() {
+      for (const bot of aiBots) bot.destroy();
+      aiBots.length = 0;
+
+      for (let i = 0; i < 10; i++) {
+        spawnAIBot();
       }
+    }
 
-      // Move Head
-      const head = snake[0];
-      const newHead = {
-        x: head.x + Math.cos(currentAngle) * speed,
-        y: head.y + Math.sin(currentAngle) * speed
-      };
+    /* ==========================================================================
+       8. AUTHENTIC SNAKE.IO SCREEN-RELATIVE VECTOR STEERING
+       - The snake's heading is directed by (mouseX - screenCenterX, mouseY - screenCenterY)
+       - If the mouse is inside the snake/screen-center deadzone (radius < 45px), NO TURNING HAPPENS!
+       - The snake glides straight forward smoothly and NEVER enters a death spiral!
+       ========================================================================== */
+    let pointerX = window.innerWidth / 2;
+    let pointerY = window.innerHeight / 2;
+    const DEADZONE_PIXELS = 45; // Generous screen pixel deadzone around snake head
 
-      // Wall soft boundary deflection
-      if (newHead.x < 14) { newHead.x = 14; currentAngle = Math.PI - currentAngle; }
-      if (newHead.x > 786) { newHead.x = 786; currentAngle = Math.PI - currentAngle; }
-      if (newHead.y < 14) { newHead.y = 14; currentAngle = -currentAngle; }
-      if (newHead.y > 586) { newHead.y = 586; currentAngle = -currentAngle; }
+    function updatePlayerSteering() {
+      if (!player || !player.isAlive || !isGameRunning) return;
 
-      // Fair Self collision (only checks segments after index 24 with generous 7px margin)
-      for (let i = 24; i < snake.length; i++) {
-        if (Math.hypot(newHead.x - snake[i].x, newHead.y - snake[i].y) < 7) {
-          isGameOver = true;
-          playChime(150, 0.4);
-          document.getElementById('final-score').textContent = score;
-          document.getElementById('modal').style.display = 'flex';
-          try {
-            if (window.ArcadeLeaderboard) {
-              window.ArcadeLeaderboard.submitScore('neon-viper', score);
+      const centerX = window.innerWidth / 2;
+      const centerY = window.innerHeight / 2;
+
+      const screenDx = pointerX - centerX;
+      const screenDy = pointerY - centerY;
+      const screenDist = Math.hypot(screenDx, screenDy);
+
+      // CRITICAL SNAKE.IO RULE: Inside deadzone circle around head = maintain current direction!
+      if (screenDist >= DEADZONE_PIXELS) {
+        // In 3D perspective, screenDx is +X (world X), screenDy is +Y on screen (world +Z)
+        player.targetAngle = Math.atan2(screenDy, screenDx);
+      }
+    }
+
+    window.addEventListener('mousemove', e => {
+      pointerX = e.clientX;
+      pointerY = e.clientY;
+      updatePlayerSteering();
+    });
+
+    window.addEventListener('mousedown', e => {
+      if (e.target.closest('.hud-btn, .btn-main, .btn-secondary, .tag-input, .skin-card, .leaderboard-overlay')) return;
+      if (player) player.isBoosting = true;
+      document.getElementById('boost-hint').classList.add('active');
+      pointerX = e.clientX;
+      pointerY = e.clientY;
+      updatePlayerSteering();
+    });
+
+    window.addEventListener('mouseup', () => {
+      if (player) player.isBoosting = false;
+      document.getElementById('boost-hint').classList.remove('active');
+    });
+
+    window.addEventListener('keydown', e => {
+      if (e.code === 'Space' && player) {
+        player.isBoosting = true;
+        document.getElementById('boost-hint').classList.add('active');
+      }
+    });
+    window.addEventListener('keyup', e => {
+      if (e.code === 'Space' && player) {
+        player.isBoosting = false;
+        document.getElementById('boost-hint').classList.remove('active');
+      }
+    });
+
+    window.addEventListener('touchmove', e => {
+      if (e.touches.length > 0) {
+        pointerX = e.touches[0].clientX;
+        pointerY = e.touches[0].clientY;
+        updatePlayerSteering();
+      }
+    }, { passive: true });
+
+    window.addEventListener('touchstart', e => {
+      if (e.touches.length > 0) {
+        pointerX = e.touches[0].clientX;
+        pointerY = e.touches[0].clientY;
+        updatePlayerSteering();
+      }
+    }, { passive: true });
+
+    const mobileBoostBtn = document.getElementById('mobile-boost');
+    mobileBoostBtn.addEventListener('touchstart', e => {
+      e.preventDefault();
+      if (player) player.isBoosting = true;
+    });
+    mobileBoostBtn.addEventListener('touchend', e => {
+      e.preventDefault();
+      if (player) player.isBoosting = false;
+    });
+
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    /* ==========================================================================
+       9. COLLISION DETECTION & KILL MECHANICS (100% SAFE SELF-PASSING)
+       ========================================================================== */
+    function checkCollisions() {
+      const allSnakes = [player, ...aiBots].filter(s => s && s.isAlive);
+
+      for (const snake of allSnakes) {
+        // 1. Eat Food
+        const headRadius = snake.baseRadius * 1.3;
+        for (let i = foods.length - 1; i >= 0; i--) {
+          const f = foods[i];
+          const dist = Math.hypot(snake.x - f.x, snake.z - f.z);
+          if (dist < headRadius + f.radius + 1.2) {
+            const gain = f.isSuper ? 28 : 6;
+            snake.mass += gain;
+            if (snake.isPlayer) {
+              playSound(f.isSuper ? 'super_eat' : 'eat', 550 + Math.random() * 300);
             }
-          } catch(e){}
-          return;
+
+            foodGroup.remove(f.mesh);
+            foods.splice(i, 1);
+
+            if (foods.length < 240) {
+              const angle = Math.random() * Math.PI * 2;
+              const d = Math.sqrt(Math.random()) * (ARENA_RADIUS - 20);
+              spawnFoodOrb(Math.cos(angle) * d, Math.sin(angle) * d, 0.8 + Math.random() * 0.6, null, Math.random() < 0.1);
+            }
+          }
+        }
+
+        // 2. Head-on-Body Collision Check (Only between DIFFERENT snakes!)
+        if (snake.invulnerableTimer <= 0) {
+          for (const rival of allSnakes) {
+            if (rival === snake) continue; // Passing through own body is 100% SAFE!
+
+            const rivalActiveSegs = Math.min(rival.bodyMeshes.length, Math.floor(12 + (rival.mass * 0.18)));
+            for (let s = 0; s < rivalActiveSegs; s += 2) {
+              const histIdx = Math.min(rival.history.length - 1, (s + 1) * 3);
+              const seg = rival.history[histIdx];
+              if (seg) {
+                const hitDist = Math.hypot(snake.x - seg.x, snake.z - seg.z);
+                if (hitDist < snake.baseRadius + rival.baseRadius * 0.85) {
+                  rival.kills++;
+                  if (rival.isPlayer) {
+                    showKillToast(`YOU ELIMINATED ${snake.name}! 💥`);
+                    playSound('kill');
+                  }
+                  snake.die(`collided with ${rival.name}`);
+                  break;
+                }
+              }
+            }
+          }
         }
       }
 
-      snake.unshift(newHead);
-
-      // Check Food Eaten (with 16px generous magnet radius)
-      let ate = false;
-      for (let i = foods.length - 1; i >= 0; i--) {
-        const f = foods[i];
-        if (Math.hypot(newHead.x - f.x, newHead.y - f.y) < f.r + 16) {
-          foods.splice(i, 1);
-          score += (f.isSuper ? 50 : 10);
-          playChime(500 + Math.random() * 400, 0.08);
-          spawnFood();
-          ate = true;
-          break;
+      // Respawn Dead Bots
+      for (let i = aiBots.length - 1; i >= 0; i--) {
+        if (!aiBots[i].isAlive) {
+          aiBots[i].destroy();
+          aiBots.splice(i, 1);
+          setTimeout(() => { if (isGameRunning) spawnAIBot(); }, 2500 + Math.random() * 2000);
         }
       }
-
-      if (!ate) snake.pop();
-
-      // Render
-      ctx.fillStyle = '#0a0c16'; ctx.fillRect(0, 0, 800, 600);
-
-      // Neon Grid Lines
-      ctx.strokeStyle = 'rgba(5,255,161,0.06)'; ctx.lineWidth = 1;
-      for (let x = 0; x < 800; x += 40) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, 600); ctx.stroke(); }
-      for (let y = 0; y < 600; y += 40) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(800, y); ctx.stroke(); }
-
-      // Outer Arena Border
-      ctx.strokeStyle = '#05ffa1'; ctx.lineWidth = 4;
-      ctx.shadowColor = '#05ffa1'; ctx.shadowBlur = 15;
-      ctx.strokeRect(10, 10, 780, 580);
-      ctx.shadowBlur = 0;
-
-      // Draw Foods
-      for (const f of foods) {
-        ctx.fillStyle = f.color;
-        ctx.shadowColor = f.color; ctx.shadowBlur = f.isSuper ? 18 : 10;
-        ctx.beginPath(); ctx.arc(f.x, f.y, f.r + (f.isSuper ? Math.sin(Date.now() * 0.01) * 2 : 0), 0, Math.PI * 2); ctx.fill();
-        ctx.shadowBlur = 0;
-      }
-
-      // Draw Snake Body
-      for (let i = snake.length - 1; i >= 0; i--) {
-        const seg = snake[i];
-        const p = 1 - i / snake.length;
-        const rad = 6 + p * 6;
-
-        ctx.fillStyle = i === 0 ? '#ffffff' : (i % 2 === 0 ? '#05ffa1' : '#00f5ff');
-        ctx.shadowColor = '#05ffa1'; ctx.shadowBlur = i === 0 ? 20 : 8;
-        ctx.beginPath(); ctx.arc(seg.x, seg.y, rad, 0, Math.PI * 2); ctx.fill();
-        ctx.shadowBlur = 0;
-      }
-
-      // HUD
-      document.getElementById('len-val').textContent = snake.length;
-      document.getElementById('score-val').textContent = score;
-
-      requestAnimationFrame(loop);
     }
-    requestAnimationFrame(loop);
+
+    function showKillToast(msg) {
+      const feed = document.getElementById('kill-feed');
+      const toast = document.createElement('div');
+      toast.className = 'kill-toast';
+      toast.textContent = msg;
+      feed.appendChild(toast);
+      setTimeout(() => { if (toast.parentNode) toast.remove(); }, 2800);
+    }
+
+    function onPlayerDied(reason) {
+      document.getElementById('final-mass').textContent = Math.floor(player.mass);
+      document.getElementById('final-kills').textContent = player.kills;
+      document.getElementById('final-rank').textContent = `#${peakRank}`;
+      document.getElementById('death-reason').textContent = `Your viper ${reason}`;
+      document.getElementById('gameover-modal').style.display = 'flex';
+
+      try {
+        if (window.ArcadeLeaderboard) {
+          window.ArcadeLeaderboard.submitScore('neon-viper', Math.floor(player.mass));
+        }
+      } catch(e){}
+    }
+
+    /* ==========================================================================
+       10. MINIMAP & LIVE LEADERBOARD RENDERING
+       ========================================================================== */
+    const minimapCanvas = document.getElementById('minimap-canvas');
+    const mCtx = minimapCanvas.getContext('2d');
+
+    function updateHUDAndLeaderboard() {
+      if (!player) return;
+
+      const massVal = Math.floor(player.mass);
+      const lenVal = Math.min(200, Math.floor(12 + (player.mass * 0.18)));
+      document.getElementById('hud-mass').textContent = massVal;
+      document.getElementById('hud-len').textContent = lenVal;
+      document.getElementById('hud-kills').textContent = player.kills;
+
+      const allActive = [player, ...aiBots].filter(s => s && s.isAlive);
+      allActive.sort((a, b) => b.mass - a.mass);
+
+      const playerRank = allActive.indexOf(player) + 1;
+      if (playerRank > 0 && playerRank < peakRank) peakRank = playerRank;
+      document.getElementById('hud-rank').textContent = `#${playerRank || 10}`;
+
+      allActive.forEach((s, idx) => s.setCrown(idx === 0));
+
+      const lbList = document.getElementById('lb-list');
+      lbList.innerHTML = '';
+      allActive.slice(0, 10).forEach((s, idx) => {
+        const li = document.createElement('li');
+        li.className = `lb-item ${s.isPlayer ? 'player' : ''} ${idx === 0 ? 'crown' : ''}`;
+        li.innerHTML = `
+          <span class="lb-name">${idx === 0 ? '👑 ' : `${idx + 1}. `}${s.name}</span>
+          <span class="lb-score">${Math.floor(s.mass)}</span>
+        `;
+        lbList.appendChild(li);
+      });
+
+      // Render Minimap
+      mCtx.clearRect(0, 0, 140, 140);
+      mCtx.save();
+      mCtx.translate(70, 70);
+
+      mCtx.strokeStyle = 'rgba(5,255,161,0.2)';
+      mCtx.lineWidth = 1;
+      mCtx.beginPath(); mCtx.arc(0, 0, 60, 0, Math.PI * 2); mCtx.stroke();
+      mCtx.beginPath(); mCtx.arc(0, 0, 30, 0, Math.PI * 2); mCtx.stroke();
+
+      const scale = 60 / ARENA_RADIUS;
+
+      for (const bot of aiBots) {
+        if (!bot.isAlive) continue;
+        mCtx.fillStyle = '#ff007f';
+        mCtx.beginPath();
+        mCtx.arc(bot.x * scale, bot.z * scale, 2.5, 0, Math.PI * 2);
+        mCtx.fill();
+      }
+
+      if (player && player.isAlive) {
+        mCtx.fillStyle = '#05ffa1';
+        mCtx.shadowColor = '#05ffa1';
+        mCtx.shadowBlur = 8;
+        mCtx.beginPath();
+        mCtx.arc(player.x * scale, player.z * scale, 4, 0, Math.PI * 2);
+        mCtx.fill();
+        mCtx.shadowBlur = 0;
+      }
+
+      mCtx.restore();
+    }
+
+    /* ==========================================================================
+       11. MAIN 3D ANIMATION LOOP
+       ========================================================================== */
+    let lastTime = performance.now();
+
+    function animate() {
+      requestAnimationFrame(animate);
+
+      const now = performance.now();
+      const deltaTime = (now - lastTime) / 1000;
+      lastTime = now;
+
+      for (const f of foods) {
+        f.mesh.rotation.y += f.rotSpeed;
+        f.mesh.rotation.x += f.rotSpeed * 0.5;
+        f.mesh.position.y = 1.2 + Math.sin(now * 0.003 + f.bobOffset) * 0.4;
+      }
+
+      if (player && player.isAlive) {
+        updatePlayerSteering();
+        player.update(deltaTime, foods, aiBots);
+
+        // Dynamic 3D Camera Follow
+        const zoomOut = Math.min(90, player.mass * 0.07);
+        const targetCamX = player.x;
+        const targetCamY = 110 + zoomOut;
+        const targetCamZ = player.z + 85 + (zoomOut * 0.75);
+
+        camera.position.x += (targetCamX - camera.position.x) * 0.08;
+        camera.position.y += (targetCamY - camera.position.y) * 0.08;
+        camera.position.z += (targetCamZ - camera.position.z) * 0.08;
+        camera.lookAt(player.x, 0, player.z);
+      }
+
+      for (const bot of aiBots) {
+        bot.update(deltaTime, foods, [player, ...aiBots]);
+      }
+
+      if (isGameRunning) {
+        checkCollisions();
+        updateHUDAndLeaderboard();
+      }
+
+      renderer.render(scene, camera);
+    }
+    requestAnimationFrame(animate);
+
+    /* ==========================================================================
+       12. UI INITIALIZATION & MODAL INTERACTIONS
+       ========================================================================== */
+    function populateSkinsGrid() {
+      const grid = document.getElementById('skins-grid');
+      grid.innerHTML = '';
+      SKINS.forEach(skin => {
+        const card = document.createElement('div');
+        card.className = `skin-card ${skin.id === currentSkinId ? 'active' : ''}`;
+        card.onclick = () => selectSkin(skin.id);
+
+        const swatch = document.createElement('div');
+        swatch.className = 'skin-swatch';
+        swatch.style.background = skin.isRainbow ? 'linear-gradient(135deg, #ff007f, #00f5ff, #05ffa1)' : skin.color;
+        swatch.style.color = skin.color;
+
+        const name = document.createElement('div');
+        name.className = 'skin-name';
+        name.textContent = skin.name;
+
+        card.appendChild(swatch);
+        card.appendChild(name);
+        grid.appendChild(card);
+      });
+    }
+    populateSkinsGrid();
+
+    function selectSkin(skinId) {
+      currentSkinId = skinId;
+      localStorage.setItem('neon_viper_skin', skinId);
+      const skin = SKINS.find(s => s.id === skinId);
+      if (skin) {
+        document.getElementById('selected-skin-name').textContent = skin.name.toUpperCase();
+        if (player) player.updateSkin(skin);
+      }
+      populateSkinsGrid();
+    }
+
+    function openSkinsModal() {
+      document.getElementById('gameover-modal').style.display = 'none';
+      document.getElementById('start-modal').style.display = 'flex';
+    }
+
+    function startGame() {
+      const tagInput = document.getElementById('player-tag-input');
+      if (tagInput && tagInput.value.trim()) {
+        playerName = tagInput.value.trim().toUpperCase().substring(0, 12);
+        localStorage.setItem('neon_viper_name', playerName);
+        if (window.ArcadeLeaderboard) {
+          window.ArcadeLeaderboard.setPlayerTag(playerName);
+        }
+      }
+
+      document.getElementById('start-modal').style.display = 'none';
+      respawnPlayer();
+    }
+
+    function respawnPlayer() {
+      if (player) player.destroy();
+
+      const skin = SKINS.find(s => s.id === currentSkinId) || SKINS[0];
+      player = new Snake3D(playerName, skin, true, 0, 0);
+      peakRank = 10;
+      isGameRunning = true;
+
+      // Reset mouse pointer position to forward offset
+      pointerX = window.innerWidth / 2;
+      pointerY = window.innerHeight / 2 - 100;
+
+      document.getElementById('gameover-modal').style.display = 'none';
+      initArena();
+    }
+
+    if (window.ArcadeLeaderboard) {
+      const savedTag = window.ArcadeLeaderboard.getPlayerTag();
+      if (savedTag) document.getElementById('player-tag-input').value = savedTag;
+    }
   </script>
 </body>
 </html>
