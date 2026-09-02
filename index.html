@@ -837,8 +837,8 @@
         this.speed = 0.44; // Slowed down by ~0.3x for calm, authentic Snake.io slither control
         this.isBoosting = false;
 
-        // Spawn Invulnerability Shield (3.0s protection)
-        this.invulnerableTimer = isPlayer ? 3.0 : 1.5;
+        // Spawn Invulnerability Shield (0.0s for player, 1.0s for freshly spawned bot)
+        this.invulnerableTimer = isPlayer ? 0.0 : 1.0;
 
         // Snake Body Data
         this.initialLength = 20;
@@ -970,18 +970,19 @@
         this.x += Math.cos(this.angle) * currentSpeed;
         this.z += Math.sin(this.angle) * currentSpeed;
 
-        // Lethal Arena Boundary Wall Collision
+        // 100% PRECISE ARENA BOUNDARY WALL COLLISION
+        const headRadius = this.baseRadius * 1.25;
         const distFromCenter = Math.hypot(this.x, this.z);
-        if (distFromCenter >= ARENA_RADIUS - 4) {
-          if (this.invulnerableTimer > 0) {
-            // Soft repel during initial spawn shield
+        if (distFromCenter + headRadius >= ARENA_RADIUS) {
+          if (!this.isPlayer && this.invulnerableTimer > 0) {
+            // Soft repel for freshly spawned bot only
             const angleToCenter = Math.atan2(-this.z, -this.x);
             this.targetAngle = angleToCenter;
-            const bounceAmt = (distFromCenter - (ARENA_RADIUS - 4));
+            const bounceAmt = (distFromCenter + headRadius - ARENA_RADIUS);
             this.x -= (this.x / distFromCenter) * bounceAmt;
             this.z -= (this.z / distFromCenter) * bounceAmt;
           } else {
-            // Lethal Explode!
+            // Instant Explode & Die!
             createExplosionSparks(this.x, this.z, 0x00f5ff, 45);
             this.die('crashed into the electric boundary wall ⚡');
             return;
@@ -1029,76 +1030,165 @@
       updateAI(foods, otherSnakes) {
         this.aiDecisionTimer--;
 
-        // Look Ahead for Obstacles
-        const lookAheadDist = this.isBoosting ? 26 : 16;
-        const forwardX = this.x + Math.cos(this.angle) * lookAheadDist;
-        const forwardZ = this.z + Math.sin(this.angle) * lookAheadDist;
+        const myActiveSegs = Math.min(this.bodyMeshes.length, Math.floor(12 + (this.mass * 0.18)));
+        const lookAheadDist = this.isBoosting ? 38 : 25;
+        const feelerAngles = [0, -0.45, 0.45, -0.9, 0.9];
 
-        // Boundary Avoidance
-        if (Math.hypot(forwardX, forwardZ) > ARENA_RADIUS - 20) {
-          this.targetAngle = Math.atan2(-this.z, -this.x) + (Math.random() - 0.5) * 0.8;
+        // 1. SURVIVAL CHECK: MULTI-RAY PROBING & WHISKERS (Avoid Walls, Self-Body, & Rivals)
+        const evaluateClearance = (rayAng, maxDist) => {
+          for (let step = 8; step <= maxDist; step += 6) {
+            const tx = this.x + Math.cos(rayAng) * step;
+            const tz = this.z + Math.sin(rayAng) * step;
+
+            // Boundary Check: Give 18 units safety cushion from outer wall
+            if (Math.hypot(tx, tz) >= ARENA_RADIUS - 18) {
+              return step - 6;
+            }
+
+            // Self-Body Avoidance: Skip neck segments 0..5, check segment 6+
+            const myMaxHist = Math.min(this.history.length - 1, (myActiveSegs + 1) * 3);
+            for (let h = 18; h <= myMaxHist; h += 4) {
+              const pt = this.history[h];
+              if (pt && Math.hypot(tx - pt.x, tz - pt.z) < 9.5) {
+                return step - 6; // Approaching own body!
+              }
+            }
+
+            // Rival Body Avoidance
+            for (const other of otherSnakes) {
+              if (!other.isAlive || other === this) continue;
+              const otherSegs = Math.min(other.bodyMeshes.length, Math.floor(12 + (other.mass * 0.18)));
+              const otherMaxHist = Math.min(other.history.length - 1, (otherSegs + 1) * 3);
+              for (let h = 3; h <= otherMaxHist; h += 4) {
+                const opt = other.history[h];
+                if (opt && Math.hypot(tx - opt.x, tz - opt.z) < 9.5) {
+                  return step - 6; // Approaching rival body!
+                }
+              }
+            }
+          }
+          return maxDist;
+        };
+
+        const forwardClearance = evaluateClearance(this.angle, lookAheadDist);
+        if (forwardClearance < lookAheadDist * 0.7) {
           this.isBoosting = false;
-          return;
-        }
+          let bestClearance = -1;
+          let bestRayAngle = this.angle;
 
-        // Snake Body Avoidance (Only avoid other snakes' bodies)
-        for (const other of otherSnakes) {
-          if (!other.isAlive || other === this) continue;
-
-          const activeSegments = Math.min(other.bodyMeshes.length, Math.floor(12 + (other.mass * 0.18)));
-          for (let i = 0; i < activeSegments; i += 3) {
-            const histIdx = Math.min(other.history.length - 1, (i + 1) * 3);
-            const seg = other.history[histIdx];
-            if (seg && Math.hypot(forwardX - seg.x, forwardZ - seg.z) < 14) {
-              this.targetAngle = this.angle + (Math.random() > 0.5 ? 1.6 : -1.6);
-              this.isBoosting = false;
-              return;
+          for (const dAng of feelerAngles) {
+            const testAng = this.angle + dAng;
+            const clr = evaluateClearance(testAng, lookAheadDist + 12);
+            if (clr > bestClearance) {
+              bestClearance = clr;
+              bestRayAngle = testAng;
             }
           }
 
-          // Aggressive Cut-off: If nearby snake is smaller, dash ahead
-          if (this.mass > other.mass * 1.2 && Math.hypot(this.x - other.x, this.z - other.z) < 40) {
-            const interceptX = other.x + Math.cos(other.angle) * 14;
-            const interceptZ = other.z + Math.sin(other.angle) * 14;
-            this.targetAngle = Math.atan2(interceptZ - this.z, interceptX - this.x);
-            this.isBoosting = Math.random() < 0.6;
+          // If close to wall perimeter, curve smoothly toward center
+          if (Math.hypot(this.x, this.z) > ARENA_RADIUS - 40) {
+            this.targetAngle = Math.atan2(-this.z, -this.x);
+          } else {
+            this.targetAngle = bestRayAngle;
+          }
+          return;
+        }
+
+        // 2. COMPETITIVE COMBAT & PREDATION
+        let nearestPrey = null;
+        let nearestPreyDist = Infinity;
+        let threatSnake = null;
+        let threatDist = Infinity;
+
+        for (const other of otherSnakes) {
+          if (!other.isAlive || other === this) continue;
+          const d = Math.hypot(this.x - other.x, this.z - other.z);
+
+          if (other.mass > this.mass * 1.15 && d < 55) {
+            if (d < threatDist) {
+              threatDist = d;
+              threatSnake = other;
+            }
+          }
+
+          if (this.mass > other.mass * 1.1 && d < 75) {
+            if (d < nearestPreyDist) {
+              nearestPreyDist = d;
+              nearestPrey = other;
+            }
+          }
+        }
+
+        // Evade bigger snakes
+        if (threatSnake) {
+          const fleeAngle = Math.atan2(this.z - threatSnake.z, this.x - threatSnake.x);
+          this.targetAngle = fleeAngle;
+          this.isBoosting = this.mass > 50 && threatDist < 35;
+          return;
+        }
+
+        // Predatory Cut-Off against smaller snakes
+        if (nearestPrey && nearestPreyDist < 65) {
+          const leadDist = 18;
+          const interceptX = nearestPrey.x + Math.cos(nearestPrey.angle) * leadDist;
+          const interceptZ = nearestPrey.z + Math.sin(nearestPrey.angle) * leadDist;
+          const attackAngle = Math.atan2(interceptZ - this.z, interceptX - this.x);
+
+          if (evaluateClearance(attackAngle, 22) > 16) {
+            this.targetAngle = attackAngle;
+            this.isBoosting = nearestPreyDist < 45 && this.mass > 60;
             return;
           }
         }
 
-        // Hunt Food
-        if (this.aiDecisionTimer <= 0 || !this.aiTargetFood) {
-          this.aiDecisionTimer = 40 + Math.random() * 40;
-          this.isBoosting = Math.random() < 0.1;
+        // 3. TARGETED FOOD HARVESTING
+        if (this.aiDecisionTimer <= 0 || !this.aiTargetFood || this.aiTargetFood.life <= 0) {
+          this.aiDecisionTimer = 25 + Math.random() * 30;
+          this.isBoosting = false;
 
-          let bestDist = Infinity;
+          let bestScore = -Infinity;
           let bestFood = null;
 
-          for (let i = 0; i < foods.length; i += 2) {
+          const sampleStep = foods.length > 60 ? 2 : 1;
+          for (let i = 0; i < foods.length; i += sampleStep) {
             const f = foods[i];
             const d = Math.hypot(f.x - this.x, f.z - this.z);
-            const weight = f.isSuper ? d * 0.5 : d;
-            if (weight < bestDist) {
-              bestDist = weight;
-              bestFood = f;
+            if (d > 160) continue;
+
+            const fruitVal = (f.type && f.type.value) ? f.type.value : (f.isSuper ? 35 : 12);
+            const score = (fruitVal * 10) / (d + 8);
+
+            if (score > bestScore) {
+              if (Math.hypot(f.x, f.z) < ARENA_RADIUS - 18) {
+                bestScore = score;
+                bestFood = f;
+              }
             }
           }
 
           if (bestFood) {
             this.aiTargetFood = bestFood;
             this.targetAngle = Math.atan2(bestFood.z - this.z, bestFood.x - this.x);
+            if (bestFood.isSuper && Math.hypot(bestFood.x - this.x, bestFood.z - this.z) < 45 && this.mass > 80) {
+              this.isBoosting = true;
+            }
           } else {
-            this.targetAngle += (Math.random() - 0.5) * 1.0;
+            if (Math.hypot(this.x, this.z) > ARENA_RADIUS - 60) {
+              this.targetAngle = Math.atan2(-this.z, -this.x);
+            } else {
+              this.targetAngle += (Math.random() - 0.5) * 0.8;
+            }
           }
         }
       }
 
       die(reason = 'crashed into another viper') {
-        if (!this.isAlive || this.invulnerableTimer > 0) return;
+        if (!this.isAlive) return;
+        if (!this.isPlayer && this.invulnerableTimer > 0) return;
         this.isAlive = false;
 
         playSound('crash', 120);
-        createExplosionSparks(this.x, this.z, this.skin.glow || 0x05ffa1, 40);
+        createExplosionSparks(this.x, this.z, this.skin.glow || 0x05ffa1, 45);
 
         // Explode into delicious 3D fruits with STRICT 5-SECOND EXPIRATION!
         // To prevent lag and room freeze, drop consolidated juicy fruits (max 10-12 drops total)
@@ -1435,19 +1525,20 @@
           }
         }
 
-        // 2. Self-Collision Check: Cannot touch/bite own body or you explode!
-        if (snake.invulnerableTimer <= 0) {
+        // 2. 100% PRECISE GAPLESS SELF-COLLISION CHECK (Cannot touch/bite own body!)
+        if (snake.isPlayer || snake.invulnerableTimer <= 0) {
           const activeSegs = Math.min(snake.bodyMeshes.length, Math.floor(12 + (snake.mass * 0.18)));
-          // Segments 0..7 are neck/turn radius; check segment 8 onwards
-          for (let s = 8; s < activeSegs; s++) {
-            const histIdx = Math.min(snake.history.length - 1, (s + 1) * 3);
-            const seg = snake.history[histIdx];
-            if (seg) {
-              const hitDist = Math.hypot(snake.x - seg.x, snake.z - seg.z);
-              const taper = 1.0 - (s / activeSegs) * 0.45;
+          const maxHistIdx = Math.min(snake.history.length - 1, (activeSegs + 1) * 3);
+          // Segments 0..4 are neck (histIdx 0..14). Check continuous history trail from h = 15:
+          for (let h = 15; h <= maxHistIdx; h += 2) {
+            const pt = snake.history[h];
+            if (pt) {
+              const hitDist = Math.hypot(snake.x - pt.x, snake.z - pt.z);
+              const segIndex = Math.max(0, Math.floor(h / 3) - 1);
+              const taper = 1.0 - (segIndex / activeSegs) * 0.45;
               const segRadius = Math.max(0.6, snake.baseRadius * taper);
-              const collideRadius = (snake.baseRadius * 1.05) + (segRadius * 0.85);
-              if (hitDist < collideRadius) {
+              const touchThreshold = (snake.baseRadius * 1.15) + segRadius;
+              if (hitDist < touchThreshold) {
                 createExplosionSparks(snake.x, snake.z, snake.skin.glow || 0x05ffa1, 45);
                 snake.die('bit its own body and exploded 💥');
                 break;
@@ -1457,18 +1548,22 @@
         }
         if (!snake.isAlive) continue;
 
-        // 3. Head-on-Body Collision Check (Against OTHER rival snakes)
-        if (snake.invulnerableTimer <= 0) {
+        // 3. 100% PRECISE GAPLESS HEAD-ON-BODY COLLISION CHECK (Against OTHER rival snakes)
+        if (snake.isPlayer || snake.invulnerableTimer <= 0) {
           for (const rival of allSnakes) {
             if (rival === snake) continue;
 
             const rivalActiveSegs = Math.min(rival.bodyMeshes.length, Math.floor(12 + (rival.mass * 0.18)));
-            for (let s = 0; s < rivalActiveSegs; s += 2) {
-              const histIdx = Math.min(rival.history.length - 1, (s + 1) * 3);
-              const seg = rival.history[histIdx];
+            const rivalMaxHist = Math.min(rival.history.length - 1, (rivalActiveSegs + 1) * 3);
+            for (let h = 3; h <= rivalMaxHist; h += 2) {
+              const seg = rival.history[h];
               if (seg) {
                 const hitDist = Math.hypot(snake.x - seg.x, snake.z - seg.z);
-                if (hitDist < snake.baseRadius + rival.baseRadius * 0.85) {
+                const segIndex = Math.max(0, Math.floor(h / 3) - 1);
+                const taper = 1.0 - (segIndex / rivalActiveSegs) * 0.45;
+                const segRadius = Math.max(0.6, rival.baseRadius * taper);
+                const touchThreshold = (snake.baseRadius * 1.15) + segRadius;
+                if (hitDist < touchThreshold) {
                   rival.kills++;
                   if (rival.isPlayer) {
                     showKillToast(`YOU ELIMINATED ${snake.name}! 💥`);
@@ -1479,6 +1574,7 @@
                 }
               }
             }
+            if (!snake.isAlive) break;
           }
         }
       }
