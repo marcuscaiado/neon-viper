@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <title>Neon Viper 3D 🐍✨ - Cyber Slither Arena</title>
+  <script src="arcade-sound-engine.js"></script>
   <script src="arcade-leaderboard.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <style>
@@ -671,6 +672,23 @@
     }
 
     function playSound(type, freq = 440) {
+      if (window.arcadeAudio) {
+        if (type === 'eat') {
+          eatPitchStep = (eatPitchStep + 1) % EAT_SCALE.length;
+          window.arcadeAudio.playPop(1.0 + (eatPitchStep * 0.1), 0.06);
+          return;
+        } else if (type === 'super_eat') {
+          window.arcadeAudio.playCollectStreak(5);
+          return;
+        } else if (type === 'kill') {
+          explodeConfetti(window.innerWidth / 2, window.innerHeight * 0.35, 65);
+          window.arcadeAudio.playTriumph();
+          return;
+        } else if (type === 'crash') {
+          window.arcadeAudio.playSoftThud(1.4);
+          return;
+        }
+      }
       try {
         const ctx = getAudio();
         const now = ctx.currentTime;
