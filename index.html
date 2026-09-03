@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <title>Neon Viper 3D 🐍✨ - Cyber Slither Arena</title>
   <script src="arcade-sound-engine.js"></script>
+  <script src="arcade-difficulty.js"></script>
   <script src="arcade-leaderboard.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <style>
@@ -1068,7 +1069,10 @@
         this.angle += turnStep;
 
         // Speed & Nitro
-        const currentSpeed = (this.isBoosting && this.mass > 40) ? this.speed * 1.75 : this.speed;
+        const playerMassScore = (player && player.mass) ? Math.round(player.mass) : 40;
+        const ddaMult = window.ArcadeDifficulty ? ArcadeDifficulty.getMultiplier(playerMassScore, 1200, 1.8) : 1.0;
+        const botSpeedScale = this.isPlayer ? 1.0 : Math.min(1.35, 0.95 + 0.1 * ddaMult);
+        const currentSpeed = ((this.isBoosting && this.mass > 40) ? this.speed * 1.75 : this.speed) * botSpeedScale;
         if (this.isBoosting && this.mass > 40 && Math.random() < 0.16) {
           this.mass -= 0.4;
           if (this.history.length > 20 && Math.random() < 0.25) {
@@ -1927,6 +1931,7 @@
     }
 
     function respawnPlayer() {
+      if (window.ArcadeDifficulty) ArcadeDifficulty.reset();
       if (player) player.destroy();
 
       const skin = SKINS.find(s => s.id === currentSkinId) || SKINS[0];
