@@ -1319,7 +1319,8 @@
               pt.x + (Math.random() - 0.5) * 3.0,
               pt.z + (Math.random() - 0.5) * 3.0,
               null,
-              5.0 // STRICT 5.0 SECONDS TIMEOUT
+              5.0, // STRICT 5.0 SECONDS TIMEOUT
+              true // isDeathDrop: starts larger and shrinks over 5s to smallest phase
             );
           }
         }
@@ -1328,7 +1329,7 @@
         for (const m of this.bodyMeshes) m.visible = false;
 
         if (this.isPlayer) {
-          onPlayerDied(reason);
+          setTimeout(() => onPlayerDied(reason), 1100);
         }
       }
 
@@ -1435,7 +1436,7 @@
       return container;
     }
 
-    function spawnFruitDrop(x, z, customType = null, duration = 5.0) {
+    function spawnFruitDrop(x, z, customType = null, duration = 5.0, isDeathDrop = false) {
       if (foods.length >= 85) return; // Strict ceiling prevents room freeze
 
       const type = customType || FRUIT_TYPES[Math.floor(Math.random() * FRUIT_TYPES.length)];
@@ -1443,13 +1444,20 @@
       mesh.position.set(x, 1.4, z);
       foodGroup.add(mesh);
 
+      // Death drops start prominently LARGER (2.4x scale)
+      const startScale = isDeathDrop ? 2.4 : 1.0;
+      mesh.scale.set(startScale, startScale, startScale);
+
       foods.push({
         mesh,
         x,
         z,
-        radius: type.isSuper ? 1.6 : 1.2,
+        baseRadius: type.isSuper ? 1.6 : 1.2,
+        radius: (type.isSuper ? 1.6 : 1.2) * (isDeathDrop ? 1.8 : 1.0),
         type,
         isSuper: !!type.isSuper,
+        isDeathDrop: !!isDeathDrop,
+        startScale: startScale,
         life: duration, // Exactly 5.0 seconds!
         maxLife: duration,
         bobOffset: Math.random() * Math.PI * 2,
@@ -1808,22 +1816,30 @@
       const deltaTime = (now - lastTime) / 1000;
       lastTime = now;
 
-      // Animate & Age Fruits (Strict 5s decay timer with blink & shrink warning)
+      // Animate & Age Fruits (Strict 5s decay timer with smooth shrink to smallest phase)
       for (let i = foods.length - 1; i >= 0; i--) {
         const f = foods[i];
         f.life -= deltaTime;
         f.mesh.rotation.y += f.rotSpeed;
         f.mesh.position.y = 1.35 + Math.sin(now * 0.003 + f.bobOffset) * 0.35;
 
-        // Warning blink & shrink in last 1.8 seconds before disappearing
-        if (f.life < 1.8) {
-          const blink = Math.sin(now * 0.03) > 0;
-          const shrink = Math.max(0.01, f.life / 1.8);
-          f.mesh.scale.set(shrink, shrink, shrink);
-          f.mesh.visible = blink || f.life > 0.6;
+        const lifeRatio = Math.max(0, f.life / f.maxLife); // 1.0 down to 0.0
+
+        if (f.isDeathDrop) {
+          // Death fruits start LARGER (2.4x) and smoothly shrink across 5s down to smallest phase
+          const minScale = 0.08;
+          const currentScale = minScale + (f.startScale - minScale) * Math.pow(lifeRatio, 0.92);
+          f.mesh.scale.set(currentScale, currentScale, currentScale);
+          f.radius = f.baseRadius * Math.max(0.5, currentScale * 0.85);
+        } else {
+          // Ambient orchard fruits: gentle shrink in last 1.5s before disappearing
+          if (f.life < 1.5) {
+            const shrink = Math.max(0.08, f.life / 1.5);
+            f.mesh.scale.set(shrink, shrink, shrink);
+          }
         }
 
-        // Expired -> vanish cleanly after exactly 5 seconds
+        // Expired -> vanish cleanly after exactly 5 seconds (at its smallest phase)
         if (f.life <= 0) {
           foodGroup.remove(f.mesh);
           foods.splice(i, 1);
