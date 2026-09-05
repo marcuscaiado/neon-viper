@@ -1363,35 +1363,94 @@
     const foodGroup = new THREE.Group();
     scene.add(foodGroup);
 
-    // Shared low-poly geometries & materials for ultra-smooth 60fps rendering
-    const leafMat = new THREE.MeshBasicMaterial({ color: 0x00e676 });
-    const stemMat = new THREE.MeshBasicMaterial({ color: 0x6d4c41 });
+    // Shared low-poly geometries & materials with vivid neon emissive pop
+    const leafMat = new THREE.MeshStandardMaterial({
+      color: 0x00ff88,
+      emissive: 0x00dd66,
+      emissiveIntensity: 0.55,
+      roughness: 0.2
+    });
+    const stemMat = new THREE.MeshStandardMaterial({
+      color: 0x8d6e63,
+      emissive: 0x4e342e,
+      emissiveIntensity: 0.35,
+      roughness: 0.4
+    });
 
     const watermelonFleshGeo = new THREE.SphereGeometry(1.3, 14, 10, 0, Math.PI);
-    const watermelonFleshMat = new THREE.MeshStandardMaterial({ color: 0xff1744, roughness: 0.3 });
+    const watermelonFleshMat = new THREE.MeshStandardMaterial({
+      color: 0xff0055,
+      emissive: 0xff0044,
+      emissiveIntensity: 0.6,
+      roughness: 0.2
+    });
     const watermelonRindGeo = new THREE.TorusGeometry(1.3, 0.22, 6, 14, Math.PI);
-    const watermelonRindMat = new THREE.MeshStandardMaterial({ color: 0x00e676, roughness: 0.4 });
+    const watermelonRindMat = new THREE.MeshStandardMaterial({
+      color: 0x00ff88,
+      emissive: 0x00bb55,
+      emissiveIntensity: 0.5,
+      roughness: 0.25
+    });
 
     const strawberryGeo = new THREE.ConeGeometry(0.85, 1.4, 10);
-    const strawberryMat = new THREE.MeshStandardMaterial({ color: 0xff1744, roughness: 0.3 });
+    const strawberryMat = new THREE.MeshStandardMaterial({
+      color: 0xff0055,
+      emissive: 0xff0044,
+      emissiveIntensity: 0.6,
+      roughness: 0.2
+    });
     const leafGeo = new THREE.BoxGeometry(0.55, 0.1, 0.55);
 
     const appleGeo = new THREE.SphereGeometry(0.9, 12, 12);
-    const appleMat = new THREE.MeshStandardMaterial({ color: 0xff1744, roughness: 0.2 });
+    const appleMat = new THREE.MeshStandardMaterial({
+      color: 0xff1744,
+      emissive: 0xff1133,
+      emissiveIntensity: 0.6,
+      roughness: 0.2
+    });
     const stemGeo = new THREE.CylinderGeometry(0.08, 0.08, 0.5, 6);
     const appleLeafGeo = new THREE.BoxGeometry(0.4, 0.08, 0.25);
 
     const orangeGeo = new THREE.SphereGeometry(0.9, 12, 12);
-    const orangeMat = new THREE.MeshStandardMaterial({ color: 0xff6d00, roughness: 0.3 });
+    const orangeMat = new THREE.MeshStandardMaterial({
+      color: 0xff6d00,
+      emissive: 0xff5500,
+      emissiveIntensity: 0.6,
+      roughness: 0.2
+    });
 
     const bananaGeo = new THREE.CylinderGeometry(0.45, 0.3, 1.6, 8);
-    const bananaMat = new THREE.MeshStandardMaterial({ color: 0xffea00, roughness: 0.2 });
+    const bananaMat = new THREE.MeshStandardMaterial({
+      color: 0xffea00,
+      emissive: 0xffcc00,
+      emissiveIntensity: 0.6,
+      roughness: 0.2
+    });
 
     const grapeSphereGeo = new THREE.SphereGeometry(0.4, 8, 8);
-    const grapeMat = new THREE.MeshStandardMaterial({ color: 0xaa00ff, roughness: 0.2 });
+    const grapeMat = new THREE.MeshStandardMaterial({
+      color: 0xd946ef,
+      emissive: 0xa855f7,
+      emissiveIntensity: 0.7,
+      roughness: 0.2
+    });
 
     function createFruitMesh(type) {
       const container = new THREE.Group();
+
+      // Soft cyber ground glow disc beneath each fruit for maximum visual pop
+      const glowDiscGeo = new THREE.CircleGeometry(1.2, 16);
+      const glowDiscColor = type.isSuper ? 0xff0055 : (type.id === 'banana' ? 0xffea00 : (type.id === 'orange' ? 0xff6d00 : (type.id === 'grapes' ? 0xd946ef : 0xff1744)));
+      const glowDiscMat = new THREE.MeshBasicMaterial({
+        color: glowDiscColor,
+        transparent: true,
+        opacity: 0.35,
+        side: THREE.DoubleSide
+      });
+      const glowDisc = new THREE.Mesh(glowDiscGeo, glowDiscMat);
+      glowDisc.rotation.x = -Math.PI / 2;
+      glowDisc.position.y = -0.55;
+      container.add(glowDisc);
 
       if (type.id === 'watermelon') {
         const flesh = new THREE.Mesh(watermelonFleshGeo, watermelonFleshMat);
@@ -1450,19 +1509,19 @@
 
       const type = customType || FRUIT_TYPES[Math.floor(Math.random() * FRUIT_TYPES.length)];
       const mesh = createFruitMesh(type);
-      mesh.position.set(x, 1.4, z);
+      mesh.position.set(x, 2.5, z);
       foodGroup.add(mesh);
 
-      // Death drops start prominently LARGER (2.4x scale)
-      const startScale = isDeathDrop ? 2.4 : 1.0;
+      // Fruits 300% (3x) increase across all sizes: normal 3.0x, death drop 7.2x
+      const startScale = isDeathDrop ? 7.2 : 3.0;
       mesh.scale.set(startScale, startScale, startScale);
 
       foods.push({
         mesh,
         x,
         z,
-        baseRadius: type.isSuper ? 1.6 : 1.2,
-        radius: (type.isSuper ? 1.6 : 1.2) * (isDeathDrop ? 1.8 : 1.0),
+        baseRadius: (type.isSuper ? 1.6 : 1.2) * 3.0,
+        radius: (type.isSuper ? 1.6 : 1.2) * 3.0 * (isDeathDrop ? 1.8 : 1.0),
         type,
         isSuper: !!type.isSuper,
         isDeathDrop: !!isDeathDrop,
@@ -1829,22 +1888,27 @@
       for (let i = foods.length - 1; i >= 0; i--) {
         const f = foods[i];
         f.life -= deltaTime;
-        f.mesh.rotation.y += f.rotSpeed;
-        f.mesh.position.y = 1.35 + Math.sin(now * 0.003 + f.bobOffset) * 0.35;
+        f.mesh.rotation.y += f.rotSpeed * 1.3;
+        f.mesh.position.y = 2.4 + Math.sin(now * 0.0035 + f.bobOffset) * 0.55;
 
         const lifeRatio = Math.max(0, f.life / f.maxLife); // 1.0 down to 0.0
 
         if (f.isDeathDrop) {
-          // Death fruits start LARGER (2.4x) and smoothly shrink across 5s down to smallest phase
-          const minScale = 0.08;
+          // Death fruits start LARGER (7.2x) and smoothly shrink across 5s down to smallest phase (0.24x)
+          const minScale = 0.24;
           const currentScale = minScale + (f.startScale - minScale) * Math.pow(lifeRatio, 0.92);
           f.mesh.scale.set(currentScale, currentScale, currentScale);
-          f.radius = f.baseRadius * Math.max(0.5, currentScale * 0.85);
+          f.radius = f.baseRadius * Math.max(0.6, (currentScale / f.startScale));
         } else {
-          // Ambient orchard fruits: gentle shrink in last 1.5s before disappearing
+          // Ambient orchard fruits: start at 3.0x, gentle shrink in last 1.5s down to 0.24x
+          const minScale = 0.24;
           if (f.life < 1.5) {
-            const shrink = Math.max(0.08, f.life / 1.5);
+            const shrink = Math.max(minScale, (f.life / 1.5) * f.startScale);
             f.mesh.scale.set(shrink, shrink, shrink);
+            f.radius = f.baseRadius * Math.max(0.6, (shrink / f.startScale));
+          } else {
+            f.mesh.scale.set(f.startScale, f.startScale, f.startScale);
+            f.radius = f.baseRadius;
           }
         }
 
